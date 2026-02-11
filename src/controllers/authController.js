@@ -1,6 +1,7 @@
 const { User } = require('../models');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const { Op } = require('sequelize');
 
 // Generate JWT
 const generateToken = (id) => {
@@ -16,8 +17,15 @@ exports.login = async (req, res) => {
     try {
         const { username, password } = req.body;
 
-        // Login with username only as per strict requirement
-        const user = await User.findOne({ where: { username } });
+        // Check for user by Username OR Email
+        const user = await User.findOne({
+            where: {
+                [Op.or]: [
+                    { username: username },
+                    { email: username }
+                ]
+            }
+        });
 
         if (user && (await user.comparePassword(password))) {
 
