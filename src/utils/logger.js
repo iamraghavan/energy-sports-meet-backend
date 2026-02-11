@@ -33,13 +33,21 @@ const format = winston.format.combine(
 // Define where to store logs
 const transports = [
     new winston.transports.Console(),
-    new winston.transports.File({
-        filename: 'logs/error.log',
-        level: 'error',
-        format: winston.format.uncolorize(), // File logs shouldn't have color codes
-    }),
-    new winston.transports.File({ filename: 'logs/all.log' }),
 ];
+
+// Only add file logs in development environment
+if (process.env.NODE_ENV !== 'production') {
+    transports.push(
+        new winston.transports.File({
+            filename: 'logs/error.log',
+            level: 'error',
+            format: winston.format.uncolorize(), // File logs shouldn't have color codes
+        })
+    );
+    transports.push(
+        new winston.transports.File({ filename: 'logs/all.log' })
+    );
+}
 
 // Create the logger instance
 const logger = winston.createLogger({

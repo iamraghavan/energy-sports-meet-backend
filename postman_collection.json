@@ -1,0 +1,389 @@
+{
+	"info": {
+		"_postman_id": "ee3ba2a3-5e4b-4a6b-83b2-aef72905bd58",
+		"name": "Energy Sports Meet API",
+		"description": "API collection for the Tamil Nadu Inter-College Sports Event Platform",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/health",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"health"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Status Monitor",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/status",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"status"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Colleges",
+			"item": [
+				{
+					"name": "Create College",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"E.G.S. Pillay Engineering College\",\n    \"city\": \"Nagapattinam\",\n    \"state\": \"Tamil Nadu\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/colleges",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"colleges"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Colleges",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/colleges",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"colleges"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Sports",
+			"item": [
+				{
+					"name": "Create Individual Sport",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"100m Dash\",\n    \"type\": \"Individual\",\n    \"amount\": 150,\n    \"max_players\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/sports",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"sports"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Team Sport",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Volleyball\",\n    \"type\": \"Team\",\n    \"amount\": 1000,\n    \"max_players\": 12\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/sports",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"sports"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Sports",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/sports",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"sports"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Registration",
+			"item": [
+				{
+					"name": "Register Student (Individual)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "name",
+									"value": "John Doe",
+									"type": "text"
+								},
+								{
+									"key": "email",
+									"value": "john.doe@example.com",
+									"type": "text"
+								},
+								{
+									"key": "mobile",
+									"value": "9876543210",
+									"type": "text"
+								},
+								{
+									"key": "sport_id",
+									"value": "1",
+									"description": "ID of Individual Sport (create sport first)",
+									"type": "text"
+								},
+								{
+									"key": "dob",
+									"value": "2002-05-15",
+									"type": "text"
+								},
+								{
+									"key": "gender",
+									"value": "Male",
+									"type": "text"
+								},
+								{
+									"key": "city",
+									"value": "Chennai",
+									"type": "text"
+								},
+								{
+									"key": "state",
+									"value": "Tamil Nadu",
+									"type": "text"
+								},
+								{
+									"key": "department",
+									"value": "CSE",
+									"type": "text"
+								},
+								{
+									"key": "year_of_study",
+									"value": "Final Year",
+									"type": "text"
+								},
+								{
+									"key": "college_id",
+									"value": "1",
+									"description": "ID from College Creation",
+									"type": "text"
+								},
+								{
+									"key": "accommodation_needed",
+									"value": "true",
+									"type": "text"
+								},
+								{
+									"key": "screenshot",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "txn_id",
+									"value": "TXN123456789",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Register Team (Captain)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "name",
+									"value": "Jane Capt",
+									"type": "text"
+								},
+								{
+									"key": "email",
+									"value": "jane.captain@example.com",
+									"type": "text"
+								},
+								{
+									"key": "mobile",
+									"value": "9123456780",
+									"type": "text"
+								},
+								{
+									"key": "sport_id",
+									"value": "2",
+									"description": "ID of Team Sport",
+									"type": "text"
+								},
+								{
+									"key": "dob",
+									"value": "2003-01-20",
+									"type": "text"
+								},
+								{
+									"key": "gender",
+									"value": "Female",
+									"type": "text"
+								},
+								{
+									"key": "city",
+									"value": "Madurai",
+									"type": "text"
+								},
+								{
+									"key": "state",
+									"value": "Tamil Nadu",
+									"type": "text"
+								},
+								{
+									"key": "department",
+									"value": "ECE",
+									"type": "text"
+								},
+								{
+									"key": "year_of_study",
+									"value": "Third Year",
+									"type": "text"
+								},
+								{
+									"key": "college_id",
+									"value": "1",
+									"type": "text"
+								},
+								{
+									"key": "create_team",
+									"value": "true",
+									"type": "text"
+								},
+								{
+									"key": "team_name",
+									"value": "Super Spikers",
+									"type": "text"
+								},
+								{
+									"key": "accommodation_needed",
+									"value": "true",
+									"type": "text"
+								},
+								{
+									"key": "screenshot",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "txn_id",
+									"value": "TXN987654321",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"register"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		}
+	]
+}
