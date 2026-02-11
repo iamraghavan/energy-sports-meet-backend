@@ -1,5 +1,6 @@
 const { User } = require('../models');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 
 // Generate JWT
 const generateToken = (id) => {
@@ -13,45 +14,25 @@ const generateToken = (id) => {
 // @access  Public
 exports.login = async (req, res) => {
     try {
-        const { username, password } = req.body; // Can accept username OR email if we change findOne logic
+        const { username, password } = req.body;
 
-        // Allow login with email or username
-        const user = await User.findOne({
-            where: sequelize.or(
-                { username: username },
-                { email: username } // if user puts email in username field
-            )
-        });
-        // Note: For Sequelize v6, the OR syntax varies. Safer standard way:
-        /*
-        const { Op } = require('sequelize');
-        const user = await User.findOne({
-            where: {
-                [Op.or]: [{ username }, { email: username }]
-            }
-        });
-        */
-        // Let's stick to strict username for now unless requested, but user said "email" in requirements.
-        // I'll stick to username for login as per previous, but add last_login update.
-        // Wait, user didn't explicitly asking for email login, just added email field.
-        // I will keep it simple: Login with Username (as it is "readable and changeable").
+        // Login with username only as per strict requirement
+        const user = await User.findOne({ where: { username } });
 
-        const strictUser = await User.findOne({ where: { username } });
-
-        if (strictUser && (await strictUser.comparePassword(password))) {
+        if (user && (await user.comparePassword(password))) {
 
             // Update last_login
-            strictUser.last_login = new Date();
-            await strictUser.save();
+            user.last_login = new Date();
+            await user.save();
 
             res.json({
-                id: strictUser.id,
-                name: strictUser.name,
-                username: strictUser.username,
-                email: strictUser.email,
-                role: strictUser.role,
-                assigned_sport_id: strictUser.assigned_sport_id,
-                token: generateToken(strictUser.id),
+                id: user.id,
+                name: user.name,
+                username: user.username,
+                email: user.email,
+                role: user.role,
+                assigned_sport_id: user.assigned_sport_id,
+                token: generateToken(user.id),
             });
         } else {
             res.status(401).json({ error: 'Invalid username or password' });
@@ -71,30 +52,19 @@ exports.createUser = async (req, res) => {
 
         // Auto-generate username if not provided
         if (!username) {
-            // Format: Role-Name-Random
-            // e.g. Scorer-John-A1B2
             const cleanName = name.replace(/\s+/g, '').slice(0, 5);
             const randomSuffix = Math.floor(1000 + Math.random() * 9000);
             username = `${role}_${cleanName}_${randomSuffix}`.toLowerCase();
         }
 
         const userExists = await User.findOne({ where: { username } });
-        if (userExists) {
-            return res.status(400).json({ error: 'Username already exists' });
-        }
+        if (userExists) return res.status(400).json({ error: 'Username already exists' });
 
         const emailExists = await User.findOne({ where: { email } });
-        if (emailExists) {
-            return res.status(400).json({ error: 'Email already exists' });
-        }
+        if (emailExists) return res.status(400).json({ error: 'Email already exists' });
 
         const user = await User.create({
-            name,
-            email,
-            username,
-            password,
-            role,
-            assigned_sport_id
+            name, email, username, password, role, assigned_sport_id
         });
 
         if (user) {
@@ -126,6 +96,42 @@ exports.getAllUsers = async (req, res) => {
         res.json(users);
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+};
+
+// @desc    Update User Profile (Self)
+// @route   PUT /api/v1/auth/profile
+// @access  Private
+exports.updateProfile = async (req, res) => {
+    try {
+        const user = await User.findByPk(req.user.id);
+
+        if (user) {
+            user.name = req.body.name || user.name;
+            user.email = req.body.email || user.email;
+            user.username = req.body.username || user.username;
+
+            if (req.body.password) {
+                const salt = await bcrypt.genSalt(10);
+                user.password = await bcrypt.hash(req.body.password, salt);
+            }
+
+            const updatedUser = await user.save();
+
+            res.json({
+                id: updatedUser.id,
+                name: updatedUser.name,
+                username: updatedUser.username,
+                email: updatedUser.email,
+                role: updatedUser.role,
+                token: generateToken(updatedUser.id) // Optional: issue new token
+            });
+        } else {
+            res.status(404).json({ error: 'User not found' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server Error' });
     }
 };
 

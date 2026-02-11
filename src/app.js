@@ -45,7 +45,17 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-    res.json({ message: 'Welcome to Tamil Nadu Inter-College Sports Event Platform API v1' });
+    res.json({ message: 'Welcome to Energy 2026 Inter-College Sports Event Platform API v1' });
+});
+
+// Serve Live Dashboard (Overview)
+app.get('/dashboard', (req, res) => {
+    res.sendFile(require('path').join(__dirname, '../test_socket_overview.html'));
+});
+
+// Serve Match Detail Test Page
+app.get('/match-test', (req, res) => {
+    res.sendFile(require('path').join(__dirname, '../test_socket.html'));
 });
 
 // Error Handling Middleware
