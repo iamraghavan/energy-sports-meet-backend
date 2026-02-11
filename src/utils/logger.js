@@ -37,16 +37,20 @@ const transports = [
 
 // Only add file logs in development environment
 if (process.env.NODE_ENV !== 'production') {
-    transports.push(
-        new winston.transports.File({
-            filename: 'logs/error.log',
-            level: 'error',
-            format: winston.format.uncolorize(), // File logs shouldn't have color codes
-        })
-    );
-    transports.push(
-        new winston.transports.File({ filename: 'logs/all.log' })
-    );
+    try {
+        transports.push(
+            new winston.transports.File({
+                filename: 'logs/error.log',
+                level: 'error',
+                format: winston.format.uncolorize(), // File logs shouldn't have color codes
+            })
+        );
+        transports.push(
+            new winston.transports.File({ filename: 'logs/all.log' })
+        );
+    } catch (error) {
+        console.warn('Failed to initialize file logging (likely readonly filesystem):', error.message);
+    }
 }
 
 // Create the logger instance
