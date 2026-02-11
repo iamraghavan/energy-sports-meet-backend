@@ -1,6 +1,7 @@
 const { Match, MatchPlayer, Team, Sport, Student } = require('../models');
 
 // Create a Match
+// Create a Match
 exports.createMatch = async (req, res) => {
     try {
         const { sport_id, team_a_id, team_b_id, start_time, match_type, referee_name } = req.body;
@@ -12,6 +13,11 @@ exports.createMatch = async (req, res) => {
             status: 'scheduled',
             referee_name
         });
+
+        // Emit Socket Event
+        const io = req.app.get('io');
+        io.to('live_overview').emit('overview_update', { action: 'create', match });
+
         res.status(201).json(match);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -28,6 +34,12 @@ exports.updateMatchDetails = async (req, res) => {
         if (!match) return res.status(404).json({ error: 'Match not found' });
 
         await match.update(updates);
+
+        // Emit Socket Events
+        const io = req.app.get('io');
+        io.to(matchId).emit('match_details_updated', match);
+        io.to('live_overview').emit('overview_update', { action: 'update', match });
+
         res.json({ message: 'Match details updated', match });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -42,6 +54,12 @@ exports.deleteMatch = async (req, res) => {
         if (!match) return res.status(404).json({ error: 'Match not found' });
 
         await match.destroy();
+
+        // Emit Socket Event
+        const io = req.app.get('io');
+        io.to('live_overview').emit('overview_update', { action: 'delete', matchId });
+        io.to(matchId).emit('match_deleted', { matchId });
+
         res.json({ message: 'Match deleted successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });

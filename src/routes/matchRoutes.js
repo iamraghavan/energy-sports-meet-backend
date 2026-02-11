@@ -20,4 +20,8 @@ router.delete('/:matchId', protect, authorize('super_admin', 'scorer'), matchCon
 // Score Updates (Emit Sockets)
 router.put('/:matchId/score', protect, authorize('super_admin', 'scorer'), matchController.updateScore);
 
+// Lineup Management
+router.get('/:matchId/lineup', matchController.getMatchLineup);
+router.post('/:matchId/lineup', protect, authorize('super_admin', 'scorer'), matchController.updateLineup);
+
 module.exports = router;
