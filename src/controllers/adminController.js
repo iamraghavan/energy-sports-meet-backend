@@ -5,22 +5,37 @@ const { sendEmail } = require('../utils/email');
 exports.verifyPayment = async (req, res) => {
     const t = await sequelize.transaction();
     try {
-        const { registrationId } = req.params;
-        const { status, remarks } = req.body; // status: 'approved' | 'rejected'
+        // Accept registrationId (UUID) or registration_code from BODY to avoid slash issues in URL
+        const { registrationId, registration_code, status, remarks } = req.body;
 
-        // Check if user is authorized (if not Super Admin)
-        // Note: req.user is set by authMiddleware
-        // We need to fetch registration first to check sport_id
+        if (!status) {
+            await t.rollback();
+            return res.status(400).json({ error: 'Status is required' });
+        }
 
-        const registration = await Registration.findByPk(registrationId, {
-            include: [
-                { model: Student, include: [College] },
-                { model: Sport },
-                { model: Team },
-                { model: Payment }
-            ],
-            transaction: t
-        });
+        let registration;
+        if (registrationId) {
+            registration = await Registration.findByPk(registrationId, {
+                include: [
+                    { model: Student, include: [College] },
+                    { model: Sport },
+                    { model: Team },
+                    { model: Payment }
+                ],
+                transaction: t
+            });
+        } else if (registration_code) {
+            registration = await Registration.findOne({
+                where: { registration_code },
+                include: [
+                    { model: Student, include: [College] },
+                    { model: Sport },
+                    { model: Team },
+                    { model: Payment }
+                ],
+                transaction: t
+            });
+        }
 
         if (!registration) {
             await t.rollback();
@@ -34,8 +49,7 @@ exports.verifyPayment = async (req, res) => {
                 return res.status(403).json({ error: 'You are not authorized to verify registrations for this sport.' });
             }
         }
-        // Super Admins can verify anything.
-        // Scorers/Committee shouldn't even reach here due to route middleware, but safety first.
+
         if (!['super_admin', 'sports_head'].includes(req.user.role)) {
             await t.rollback();
             return res.status(403).json({ error: 'Unauthorized role.' });

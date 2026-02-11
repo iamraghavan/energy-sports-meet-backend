@@ -62,6 +62,11 @@ exports.createUser = async (req, res) => {
     try {
         let { name, email, username, password, role, assigned_sport_id } = req.body;
 
+        // Enforce assigned_sport_id for Sports Head
+        if (role === 'sports_head' && !assigned_sport_id) {
+            return res.status(400).json({ error: 'Assigned Sport ID is required for Sports Head role' });
+        }
+
         // Auto-generate username if not provided
         if (!username) {
             const cleanName = name.replace(/\s+/g, '').slice(0, 5);
