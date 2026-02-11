@@ -34,6 +34,7 @@ const registrationRoutes = require('./routes/registrationRoutes');
 app.use('/api/v1/colleges', collegeRoutes);
 app.use('/api/v1/sports', sportRoutes);
 app.use('/api/v1/register', registrationRoutes);
+app.use('/api/v1/admin', require('./routes/adminRoutes'));
 
 // Health Check
 app.get('/health', (req, res) => {
