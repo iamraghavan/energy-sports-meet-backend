@@ -192,3 +192,36 @@ exports.getRegistrations = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// NEW: Get Registration by ID or Code
+exports.getRegistrationById = async (req, res) => {
+    try {
+        const { id } = req.params; // Can be UUID or EGSP code
+
+        let whereClause = {};
+        // Simple check: if it looks like a UUID, search by ID, else by code
+        if (id.includes('EGSP')) {
+            whereClause.registration_code = id;
+        } else {
+            whereClause.id = id;
+        }
+
+        const registration = await Registration.findOne({
+            where: whereClause,
+            include: [
+                { model: Student, include: [College] },
+                { model: Sport },
+                { model: Team },
+                { model: Payment }
+            ]
+        });
+
+        if (!registration) {
+            return res.status(404).json({ error: 'Registration not found' });
+        }
+
+        res.json(registration);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};

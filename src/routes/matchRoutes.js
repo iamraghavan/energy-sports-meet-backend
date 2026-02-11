@@ -9,6 +9,9 @@ router.get('/live', matchController.getLiveMatches);
 // Public: Get All Matches for a Sport
 router.get('/sport/:sportId', matchController.getMatchesBySport);
 
+// Public: Get Specific Match Details
+router.get('/:matchId', matchController.getMatchById);
+
 // Protected: Scorer/Admin CRUD
 router.post('/', protect, authorize('super_admin', 'sports_head', 'scorer'), matchController.createMatch);
 router.put('/:matchId', protect, authorize('super_admin', 'sports_head', 'scorer'), matchController.updateMatchDetails); // Edit Time/Teams

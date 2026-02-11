@@ -130,3 +130,23 @@ exports.getMatchesBySport = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// Get Match by ID
+exports.getMatchById = async (req, res) => {
+    try {
+        const { matchId } = req.params;
+        const match = await Match.findByPk(matchId, {
+            include: [
+                { model: Team, as: 'TeamA' },
+                { model: Team, as: 'TeamB' },
+                { model: Sport }
+            ]
+        });
+
+        if (!match) return res.status(404).json({ error: 'Match not found' });
+
+        res.json(match);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
