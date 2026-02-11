@@ -48,6 +48,10 @@ const Student = sequelize.define('Student', {
         type: DataTypes.INTEGER, // References College table
         allowNull: true // Can be null if "Other" college
     },
+    other_college: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     department: {
         type: DataTypes.STRING,
         allowNull: false

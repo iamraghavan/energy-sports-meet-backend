@@ -5,6 +5,10 @@ const Sport = require('./Sport');
 const Team = require('./Team');
 const Registration = require('./Registration');
 const Payment = require('./Payment');
+const User = require('./User');
+
+const Match = require('./Match');
+const MatchPlayer = require('./MatchPlayer');
 
 // Associations
 
@@ -36,6 +40,22 @@ Registration.belongsTo(Team, { foreignKey: 'team_id' });
 Registration.hasOne(Payment, { foreignKey: 'registration_id' });
 Payment.belongsTo(Registration, { foreignKey: 'registration_id' });
 
+// Match Associations
+Sport.hasMany(Match, { foreignKey: 'sport_id' });
+Match.belongsTo(Sport, { foreignKey: 'sport_id' });
+
+Team.hasMany(Match, { foreignKey: 'team_a_id', as: 'HomeMatches' });
+Match.belongsTo(Team, { foreignKey: 'team_a_id', as: 'TeamA' });
+
+Team.hasMany(Match, { foreignKey: 'team_b_id', as: 'AwayMatches' });
+Match.belongsTo(Team, { foreignKey: 'team_b_id', as: 'TeamB' });
+
+Match.hasMany(MatchPlayer, { foreignKey: 'match_id' });
+MatchPlayer.belongsTo(Match, { foreignKey: 'match_id' });
+
+Student.hasMany(MatchPlayer, { foreignKey: 'student_id' });
+MatchPlayer.belongsTo(Student, { foreignKey: 'student_id' });
+
 module.exports = {
     sequelize,
     Student,
@@ -43,5 +63,8 @@ module.exports = {
     Sport,
     Team,
     Registration,
-    Payment
+    Payment,
+    User,
+    Match,
+    MatchPlayer
 };

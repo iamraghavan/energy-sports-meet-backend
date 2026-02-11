@@ -31,10 +31,13 @@ const collegeRoutes = require('./routes/collegeRoutes');
 const sportRoutes = require('./routes/sportRoutes');
 const registrationRoutes = require('./routes/registrationRoutes');
 
+app.use('/api/v1/auth', require('./routes/authRoutes'));
 app.use('/api/v1/colleges', collegeRoutes);
 app.use('/api/v1/sports', sportRoutes);
 app.use('/api/v1/register', registrationRoutes);
 app.use('/api/v1/admin', require('./routes/adminRoutes'));
+app.use('/api/v1/matches', require('./routes/matchRoutes'));
+app.use('/api/v1/committee', require('./routes/committeeRoutes'));
 
 // Health Check
 app.get('/health', (req, res) => {

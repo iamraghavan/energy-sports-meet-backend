@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.io Test</title>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .log { background: #f0f0f0; padding: 10px; border: 1px solid #ccc; height: 300px; overflow-y: scroll; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Socket.io Real-time Score Test</h1>
+    <p>Status: <span id="status">Disconnected</span></p>
+    
+    <div>
+        <input type="text" id="matchId" placeholder="Enter Match ID (UUID)" value="test-match-id">
+        <button onclick="joinMatch()">Join Match Room</button>
+    </div>
+
+    <h3>Logs:</h3>
+    <div id="log" class="log"></div>
+
+    <script>
+        // Connect to the backend
+        // Update URL if deployed (e.g., https://your-app.onrender.com)
+        const socket = io('http://localhost:3000');
+        const logDiv = document.getElementById('log');
+        const statusSpan = document.getElementById('status');
+
+        function log(msg, type = 'info') {
+            const p = document.createElement('p');
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            if (type === 'success') p.className = 'success';
+            if (type === 'error') p.className = 'error';
+            logDiv.appendChild(p);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        socket.on('connect', () => {
+            statusSpan.textContent = "Connected (" + socket.id + ")";
+            statusSpan.style.color = "green";
+            log("Connected to server", "success");
+        });
+
+        socket.on('disconnect', () => {
+            statusSpan.textContent = "Disconnected";
+            statusSpan.style.color = "red";
+            log("Disconnected from server", "error");
+        });
+
+        socket.on('score_updated', (data) => {
+            log("Score Update Received: " + JSON.stringify(data), "success");
+            alert("Score Updated! Check logs.");
+        });
+
+        function joinMatch() {
+            const matchId = document.getElementById('matchId').value;
+            socket.emit('join_match', matchId);
+            log("Sent request to join match: " + matchId);
+        }
+    </script>
+</body>
+</html>
