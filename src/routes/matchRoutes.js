@@ -24,4 +24,8 @@ router.put('/:matchId/score', protect, authorize('super_admin', 'scorer'), match
 router.get('/:matchId/lineup', matchController.getMatchLineup);
 router.post('/:matchId/lineup', protect, authorize('super_admin', 'scorer'), matchController.updateLineup);
 
+// Dynamic Match Events (Ball-by-ball, Goal logs)
+// Payload: { event_type: 'run', value: 4, key: 'runs', team_id: '...', player_id: '...' }
+router.post('/:matchId/event', protect, authorize('super_admin', 'scorer'), matchController.updateMatchEvent);
+
 module.exports = router;

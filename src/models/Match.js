@@ -36,6 +36,11 @@ const Match = sequelize.define('Match', {
         type: DataTypes.JSON,
         defaultValue: {}
     },
+    // Timeline of events (e.g., ball-by-ball, goal logs)
+    match_events: {
+        type: DataTypes.JSON,
+        defaultValue: []
+    },
     winner_id: {
         type: DataTypes.UUID,
         allowNull: true

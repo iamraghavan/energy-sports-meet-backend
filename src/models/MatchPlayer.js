@@ -22,6 +22,11 @@ const MatchPlayer = sequelize.define('MatchPlayer', {
     is_substitute: {
         type: DataTypes.BOOLEAN,
         defaultValue: false
+    },
+    // Dynamic stats: { runs: 50, wickets: 2 } or { goals: 1, assists: 2 }
+    performance_stats: {
+        type: DataTypes.JSON,
+        defaultValue: {}
     }
 }, {
     timestamps: true,
