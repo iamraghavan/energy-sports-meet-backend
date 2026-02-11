@@ -1,0 +1,52 @@
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
+
+const Registration = sequelize.define('Registration', {
+    id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true
+    },
+    registration_code: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true
+    },
+    student_id: {
+        type: DataTypes.UUID,
+        allowNull: false
+    },
+    sport_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    team_id: {
+        type: DataTypes.UUID,
+        allowNull: true
+    },
+    is_captain: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    accommodation_needed: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    payment_status: {
+        type: DataTypes.ENUM('pending', 'paid', 'failed'),
+        defaultValue: 'pending'
+    },
+    status: {
+        type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+        defaultValue: 'pending'
+    },
+    created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    timestamps: true,
+    tableName: 'registrations'
+});
+
+module.exports = Registration;
