@@ -1,4 +1,4 @@
-const { Student, Registration, Sport, Team, Payment, sequelize } = require('../models');
+const { Student, Registration, Sport, Team, Payment, College, sequelize } = require('../models');
 const { uploadToGitHub } = require('../utils/upload');
 const { v4: uuidv4 } = require('uuid');
 
@@ -193,13 +193,17 @@ exports.getRegistrations = async (req, res) => {
     }
 };
 
-// NEW: Get Registration by ID or Code
+// NEW: Get Registration by ID or Code (Via Query Param to handle slashes)
 exports.getRegistrationById = async (req, res) => {
     try {
-        const { id } = req.params; // Can be UUID or EGSP code
+        // Use query param 'id' to support codes with slashes (e.g. ?id=EGSP/...)
+        const { id } = req.query;
+
+        if (!id) {
+            return res.status(400).json({ error: 'ID or Registration Code is required' });
+        }
 
         let whereClause = {};
-        // Simple check: if it looks like a UUID, search by ID, else by code
         if (id.includes('EGSP')) {
             whereClause.registration_code = id;
         } else {
