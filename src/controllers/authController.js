@@ -17,6 +17,10 @@ exports.login = async (req, res) => {
     try {
         const { username, password } = req.body;
 
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Please provide username (or email) and password' });
+        }
+
         // Check for user by Username OR Email
         const user = await User.findOne({
             where: {
