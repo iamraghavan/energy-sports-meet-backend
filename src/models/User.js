@@ -8,6 +8,18 @@ const User = sequelize.define('User', {
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true
     },
+    name: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    email: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+        validate: {
+            isEmail: true
+        }
+    },
     username: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -25,6 +37,14 @@ const User = sequelize.define('User', {
         type: DataTypes.INTEGER,
         allowNull: true,
         comment: 'Only for Sports Head role'
+    },
+    is_active: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+    },
+    last_login: {
+        type: DataTypes.DATE,
+        allowNull: true
     }
 }, {
     timestamps: true,

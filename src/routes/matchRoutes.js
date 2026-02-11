@@ -9,8 +9,12 @@ router.get('/live', matchController.getLiveMatches);
 // Public: Get All Matches for a Sport
 router.get('/sport/:sportId', matchController.getMatchesBySport);
 
-// Protected: Scorer/Admin Create & Update
+// Protected: Scorer/Admin CRUD
 router.post('/', protect, authorize('super_admin', 'sports_head', 'scorer'), matchController.createMatch);
+router.put('/:matchId', protect, authorize('super_admin', 'sports_head', 'scorer'), matchController.updateMatchDetails); // Edit Time/Teams
+router.delete('/:matchId', protect, authorize('super_admin', 'scorer'), matchController.deleteMatch); // Delete Match
+
+// Score Updates (Emit Sockets)
 router.put('/:matchId/score', protect, authorize('super_admin', 'scorer'), matchController.updateScore);
 
 module.exports = router;

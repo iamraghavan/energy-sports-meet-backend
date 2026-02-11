@@ -4,9 +4,6 @@ const { Match, MatchPlayer, Team, Sport, Student } = require('../models');
 exports.createMatch = async (req, res) => {
     try {
         const { sport_id, team_a_id, team_b_id, start_time, match_type, referee_name } = req.body;
-
-        // Validation: Verify teams belong to sport, etc.
-
         const match = await Match.create({
             sport_id,
             team_a_id,
@@ -15,14 +12,43 @@ exports.createMatch = async (req, res) => {
             status: 'scheduled',
             referee_name
         });
-
         res.status(201).json(match);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
 
-// Update Match Score
+// Update Match Details (Non-Score)
+exports.updateMatchDetails = async (req, res) => {
+    try {
+        const { matchId } = req.params;
+        const updates = req.body; // { start_time, referee_name, etc. }
+
+        const match = await Match.findByPk(matchId);
+        if (!match) return res.status(404).json({ error: 'Match not found' });
+
+        await match.update(updates);
+        res.json({ message: 'Match details updated', match });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// Delete Match
+exports.deleteMatch = async (req, res) => {
+    try {
+        const { matchId } = req.params;
+        const match = await Match.findByPk(matchId);
+        if (!match) return res.status(404).json({ error: 'Match not found' });
+
+        await match.destroy();
+        res.json({ message: 'Match deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// Update Match Score & Live Broadcast
 exports.updateScore = async (req, res) => {
     try {
         const { matchId } = req.params;
@@ -37,13 +63,23 @@ exports.updateScore = async (req, res) => {
 
         await match.save();
 
-        // Emit Socket Event
+        // Emit Socket Events
         const io = req.app.get('io');
+
+        // 1. Detailed Update (For inside the match view)
         io.to(matchId).emit('score_updated', {
             matchId,
             scoreDetails: score_details,
             status: match.status,
             winnerId: winner_id
+        });
+
+        // 2. Overview Update (For the main dashboard list)
+        io.to('live_overview').emit('overview_update', {
+            matchId,
+            sportId: match.sport_id,
+            scoreSummary: score_details, // Frontend can parse main score
+            status: match.status
         });
 
         res.json({ message: 'Score updated', match });

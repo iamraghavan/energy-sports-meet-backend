@@ -13,11 +13,15 @@ async function seedAdmin() {
             console.log('⚠️ Super Admin already exists.');
         } else {
             await User.create({
+                name: 'Super Admin',
+                email: 'superadmin@energy.com',
                 username: 'superadmin',
                 password: 'adminpassword123', // Change this in production!
                 role: 'super_admin'
             });
             console.log('✅ Super Admin created successfully.');
+            console.log('Name: Super Admin');
+            console.log('Email: superadmin@energy.com');
             console.log('Username: superadmin');
             console.log('Password: adminpassword123');
         }
