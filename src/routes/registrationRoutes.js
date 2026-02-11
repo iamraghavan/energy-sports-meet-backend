@@ -17,4 +17,8 @@ router.get('/', protect, authorize('super_admin', 'sports_head'), registrationCo
 // Uses Query Param ?id=... to handle slashes in registration codes
 router.get('/details', registrationController.getRegistrationById);
 
+// Download Ticket PDF
+router.get('/:id/ticket', registrationController.downloadTicket);
+router.get('/:id/checkin', registrationController.downloadCheckIn);
+
 module.exports = router;

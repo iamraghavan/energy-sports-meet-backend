@@ -1,6 +1,7 @@
 const { Student, Registration, Sport, Team, Payment, College, sequelize } = require('../models');
 const { uploadToGitHub } = require('../utils/upload');
 const { v4: uuidv4 } = require('uuid');
+const { generateRegistrationPDF, generateCheckInPDF } = require('../utils/pdf');
 
 exports.registerStudent = async (req, res) => {
     // ... (Existing registerStudent logic - kept as is)
@@ -225,6 +226,80 @@ exports.getRegistrationById = async (req, res) => {
         }
 
         res.json(registration);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// Download Ticket/Invoice PDF
+exports.downloadTicket = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        let whereClause = {};
+        if (id.includes('EGSP')) {
+            whereClause.registration_code = id;
+        } else {
+            whereClause.id = id;
+        }
+
+        const registration = await Registration.findOne({
+            where: whereClause,
+            include: [
+                { model: Student, include: [College] },
+                { model: Sport },
+                { model: Team },
+                { model: Payment }
+            ]
+        });
+
+        if (!registration) {
+            return res.status(404).json({ error: 'Registration not found' });
+        }
+
+        const pdfBuffer = await generateRegistrationPDF(registration);
+
+        res.set({
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="ticket-${registration.registration_code}.pdf"`,
+            'Content-Length': pdfBuffer.length
+        });
+
+        res.send(pdfBuffer);
+
+    } catch (error) {
+        console.error('PDF Generation Error:', error);
+        res.status(500).json({ error: 'Failed to generate ticket' });
+    }
+};
+
+// Download Check-In Pass
+exports.downloadCheckIn = async (req, res) => {
+    try {
+        const { id } = req.params;
+        let whereClause = {};
+        if (id.includes('EGSP')) {
+            whereClause.registration_code = id;
+        } else {
+            whereClause.id = id;
+        }
+
+        const registration = await Registration.findOne({
+            where: whereClause,
+            include: [{ model: Student, include: [College] }, { model: Sport }]
+        });
+
+        if (!registration) return res.status(404).json({ error: 'Registration not found' });
+
+        const pdfBuffer = await generateCheckInPDF(registration);
+
+        res.set({
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="checkin-${registration.registration_code}.pdf"`,
+            'Content-Length': pdfBuffer.length
+        });
+        res.send(pdfBuffer);
+
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
