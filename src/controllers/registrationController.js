@@ -20,7 +20,14 @@ exports.registerStudent = async (req, res) => {
             txn_id
         } = req.body;
 
-        // ... existing code ...
+        // Normalize selected_sport_ids
+        if (typeof selected_sport_ids === 'string') {
+            selected_sport_ids = selected_sport_ids.split(',').map(s => parseInt(s.trim()));
+        }
+
+        if (!selected_sport_ids || !Array.isArray(selected_sport_ids) || selected_sport_ids.length === 0) {
+            throw new Error('At least one sport must be selected.');
+        }
 
         // Basic Validation
         const requiredFields = ['name', 'email', 'mobile', 'txn_id'];
@@ -29,7 +36,19 @@ exports.registerStudent = async (req, res) => {
             throw new Error(`Missing required fields: ${missing.join(', ')}`);
         }
 
-        // ... existing code ...
+        // 1. Handle College Update (PD Info)
+        let finalCollegeId = college_id;
+        if (!college_id || college_id === 'other' || college_id === '') {
+            finalCollegeId = null;
+        } else {
+            // Update college info if provided (PD registration case)
+            await College.update({
+                college_contact,
+                college_email,
+                pd_name,
+                pd_whatsapp
+            }, { where: { id: college_id }, transaction: t });
+        }
 
         // 2. Student Handling (Individual detail)
         let student = await Student.findOne({ where: { email }, transaction: t });
@@ -121,8 +140,20 @@ exports.registerStudent = async (req, res) => {
                     text: emailContent.text,
                     html: emailContent.html
                 });
+                // 3. Google Sheets Backup
+                const { appendRegistrationToSheet } = require('../utils/googleSheets');
+                await appendRegistrationToSheet({
+                    registration_code: registrationCode,
+                    name,
+                    email,
+                    mobile,
+                    sports: sportSummary,
+                    amount: totalAmount,
+                    txn_id,
+                    college: finalCollegeId ? 'ID: ' + finalCollegeId : other_college || 'Other'
+                });
             } catch (err) {
-                console.error('Notification Error:', err.message);
+                console.error('Notification/Backup Error:', err.message);
             }
         };
         triggerNotifications();
