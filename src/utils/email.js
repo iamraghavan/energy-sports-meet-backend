@@ -9,6 +9,8 @@ const transporter = nodemailer.createTransport({
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
     },
+    // Force IPv4 as some clouds (Render) have IPv6 routing issues with Gmail SMTP
+    family: 4,
     // Deliverability Headers
     headers: {
         'X-Entity-Ref-ID': 'energy-sports-meet-2026',
