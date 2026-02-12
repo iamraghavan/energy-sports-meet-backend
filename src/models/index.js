@@ -75,5 +75,6 @@ module.exports = {
     Payment,
     User,
     Match,
-    MatchPlayer
+    MatchPlayer,
+    RegistrationSport
 };

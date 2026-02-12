@@ -182,7 +182,7 @@ exports.generateRegistrationPDF = async (registration) => {
             doc.fontSize(7).fillColor('black').text('Energy Sports Meet 2026 | For Any Help or Query contact Registration Desk', margin, bottomLineY + 6, { width: 320, align: 'left', lineBreak: false });
 
             // Right (Calculated X to ensure fit)
-            doc.text('energy.egspgroup.in | @egspec', pageWidth - margin - 200, bottomLineY + 6, { width: 200, align: 'right', lineBreak: false });
+            doc.text('energy.egspgroup.in | Branding & Media Team', pageWidth - margin - 200, bottomLineY + 6, { width: 200, align: 'right', lineBreak: false });
 
             doc.end();
         } catch (error) {
