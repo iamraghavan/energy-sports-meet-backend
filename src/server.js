@@ -3,6 +3,11 @@ const sequelize = require('./config/database');
 const logger = require('./utils/logger');
 const http = require('http');
 const { Server } = require('socket.io');
+const dns = require('dns');
+
+// Force IPv4 preference globally to avoid ENETUNREACH errors on certain cloud platforms (like Render)
+// when connecting to services like Google APIs or SMTP servers that may have IPv6 issues.
+dns.setDefaultResultOrder('ipv4first');
 
 const PORT = process.env.PORT || 3000;
 

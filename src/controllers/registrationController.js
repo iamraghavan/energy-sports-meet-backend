@@ -162,18 +162,23 @@ exports.registerStudent = async (req, res) => {
         const { getRegistrationReceiptTemplate } = require('../utils/emailTemplates');
 
         const triggerNotifications = async () => {
-            try {
-                const sportSummary = sports.map(s => `${s.name} (${s.category})`).join(', ');
+            const sportSummary = sports.map(s => `${s.name} (${s.category})`).join(', ');
 
-                // WhatsApp
+            // 1. WhatsApp Notification
+            try {
                 await sendWhatsApp({
                     phone: mobile,
                     template_name: 'energy_sports_meet_2026_registration_received',
                     variables: [name, sportSummary, registrationCode, 'Pending'],
                     buttons: [registrationCode, registrationCode]
                 });
+                console.log(`✅ WhatsApp sent for ${registrationCode}`);
+            } catch (err) {
+                console.error(`❌ WhatsApp Failed for ${registrationCode}:`, err.message);
+            }
 
-                // Email
+            // 2. Email Notification
+            try {
                 const emailContent = getRegistrationReceiptTemplate({
                     name, regCode: registrationCode, sportName: sportSummary
                 });
@@ -183,7 +188,13 @@ exports.registerStudent = async (req, res) => {
                     text: emailContent.text,
                     html: emailContent.html
                 });
-                // 3. Google Sheets Backup
+                console.log(`✅ Email sent for ${registrationCode}`);
+            } catch (err) {
+                console.error(`❌ Email Failed for ${registrationCode}:`, err.message);
+            }
+
+            // 3. Google Sheets Backup
+            try {
                 const { appendRegistrationToSheet } = require('../utils/googleSheets');
                 await appendRegistrationToSheet({
                     registration_code: registrationCode,
@@ -199,12 +210,14 @@ exports.registerStudent = async (req, res) => {
                     payment_status: 'Pending',
                     status: 'Pending',
                     accommodation: accommodation_needed === 'true' || accommodation_needed === true,
-                    college: finalCollegeId ? 'ID: ' + finalCollegeId : other_college || 'Other',
+                    college: finalCollegeName || other_college || 'Other',
                     pd_name,
                     pd_whatsapp
                 });
+                console.log(`✅ Google Sheet backup success for ${registrationCode}`);
             } catch (err) {
-                console.error('Notification/Backup Error:', err.message);
+                console.error(`❌ Google Sheet Backup Failed for ${registrationCode}:`, err.message);
+                if (err.stack) console.error(err.stack);
             }
         };
         triggerNotifications();
