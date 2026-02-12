@@ -14,6 +14,8 @@ exports.registerStudent = async (req, res) => {
 
     try {
         console.log('--- Registration Request Received ---');
+        console.log('Body:', req.body);
+        console.log('File:', req.file ? req.file.originalname : 'No file');
         // ... (Logs)
 
         let {
@@ -27,7 +29,18 @@ exports.registerStudent = async (req, res) => {
         // ... (Validation)
         // Basic Required Fields
         if (!name || !dob || !gender || !email || !mobile || !department || !year_of_study || !sport_id || !txn_id) {
-            throw new Error('Missing required fields (name, dob, gender, email, mobile, department, year, sport_id, txn_id)');
+            const missing = [];
+            if (!name) missing.push('name');
+            if (!dob) missing.push('dob');
+            if (!gender) missing.push('gender');
+            if (!email) missing.push('email');
+            if (!mobile) missing.push('mobile');
+            if (!department) missing.push('department');
+            if (!year_of_study) missing.push('year_of_study');
+            if (!sport_id) missing.push('sport_id');
+            if (!txn_id) missing.push('txn_id');
+
+            throw new Error(`Missing required fields: ${missing.join(', ')}`);
         }
 
         let formattedDob = dob;
