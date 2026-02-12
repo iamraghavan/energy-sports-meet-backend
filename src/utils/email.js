@@ -3,34 +3,50 @@ require('dotenv').config();
 
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    secure: false, // true for 465, false for other ports
+    port: parseInt(process.env.SMTP_PORT),
+    secure: process.env.SMTP_SECURE === 'true',
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
     },
+    // Deliverability Headers
+    headers: {
+        'X-Entity-Ref-ID': 'energy-sports-meet-2026',
+        'Precedence': 'bulk',
+        'X-Auto-Response-Suppress': 'OOF, AutoReply'
+    }
 });
 
 /**
- * Send email with attachment
- * @param {string} to - Recipient email
- * @param {string} subject - Email subject
- * @param {string} text - Email body text
- * @param {Array} attachments - Array of attachment objects { filename, content }
+ * Send professional multipart email
+ * @param {Object} options - { to, subject, text, html, attachments }
  */
-exports.sendEmail = async (to, subject, text, attachments = []) => {
+exports.sendEmail = async ({ to, subject, text, html, attachments = [] }) => {
     try {
-        const info = await transporter.sendMail({
-            from: process.env.SMTP_USER, // sender address
-            to, // list of receivers
-            subject, // Subject line
-            text, // plain text body
-            attachments
-        });
-        console.log('Message sent: %s', info.messageId);
+        const mailOptions = {
+            from: {
+                name: 'Energy Sports Meet 2026',
+                address: process.env.SMTP_USER
+            },
+            to,
+            subject,
+            text, // fallback plain text
+            html, // professional html
+            attachments,
+            // Header for List-Unsubscribe (Standard practice)
+            list: {
+                unsubscribe: {
+                    url: 'https://energy.egspgroup.in/unsubscribe',
+                    comment: 'Unsubscribe from Energy Sports Meet updates'
+                }
+            }
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log('✅ Email sent: %s', info.messageId);
         return info;
     } catch (error) {
-        console.error('Error sending email:', error);
+        console.error('❌ Email sending failed:', error.message);
         throw error;
     }
 };

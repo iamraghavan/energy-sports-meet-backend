@@ -1,11 +1,11 @@
 const { Registration, Payment, Student, Sport, Team, College, sequelize } = require('../models');
-const { generateConfirmationPDF } = require('../utils/pdf');
+const { generateRegistrationPDF } = require('../utils/pdf');
 const { sendEmail } = require('../utils/email');
+const { getRegistrationApprovalTemplate, getRegistrationRejectionTemplate } = require('../utils/emailTemplates');
 
 exports.verifyPayment = async (req, res) => {
     const t = await sequelize.transaction();
     try {
-        // Accept registrationId (UUID) or registration_code from BODY to avoid slash issues in URL
         const { registrationId, registration_code, status, remarks } = req.body;
 
         if (!status) {
@@ -14,27 +14,17 @@ exports.verifyPayment = async (req, res) => {
         }
 
         let registration;
+        const includeOptions = [
+            { model: Student, include: [College] },
+            { model: Sport },
+            { model: Team },
+            { model: Payment }
+        ];
+
         if (registrationId) {
-            registration = await Registration.findByPk(registrationId, {
-                include: [
-                    { model: Student, include: [College] },
-                    { model: Sport },
-                    { model: Team },
-                    { model: Payment }
-                ],
-                transaction: t
-            });
+            registration = await Registration.findByPk(registrationId, { include: includeOptions, transaction: t });
         } else if (registration_code) {
-            registration = await Registration.findOne({
-                where: { registration_code },
-                include: [
-                    { model: Student, include: [College] },
-                    { model: Sport },
-                    { model: Team },
-                    { model: Payment }
-                ],
-                transaction: t
-            });
+            registration = await Registration.findOne({ where: { registration_code }, include: includeOptions, transaction: t });
         }
 
         if (!registration) {
@@ -43,54 +33,65 @@ exports.verifyPayment = async (req, res) => {
         }
 
         // --- RBAC Check ---
-        if (req.user.role === 'sports_head') {
-            if (registration.sport_id !== req.user.assigned_sport_id) {
-                await t.rollback();
-                return res.status(403).json({ error: 'You are not authorized to verify registrations for this sport.' });
-            }
-        }
-
-        if (!['super_admin', 'sports_head'].includes(req.user.role)) {
+        if (req.user.role === 'sports_head' && registration.sport_id !== req.user.assigned_sport_id) {
             await t.rollback();
-            return res.status(403).json({ error: 'Unauthorized role.' });
+            return res.status(403).json({ error: 'You are not authorized to verify registrations for this sport.' });
         }
-        // ------------------
 
         if (status === 'approved') {
-            // Update Registration Status
             registration.status = 'approved';
             registration.payment_status = 'paid';
             await registration.save({ transaction: t });
 
-            // Update Payment Status
             if (registration.Payment) {
                 registration.Payment.verified_by = req.user.id;
                 registration.Payment.verified_at = new Date();
                 await registration.Payment.save({ transaction: t });
             }
 
-            // Generate PDF
-            const pdfBuffer = await generateConfirmationPDF(registration);
+            // Generate Ticket PDF
+            const pdfBuffer = await generateRegistrationPDF(registration);
 
-            // Send Email
-            await sendEmail(
-                registration.Student.email,
-                'Registration Confirmed - Energy Sports Meet',
-                `Dear ${registration.Student.name},\n\nYour registration for ${registration.Sport.name} has been approved. Please find the attached confirmation slip.\n\nRegards,\nEnergy Sports Meet Team`,
-                [
+            // Professional Email Template
+            const emailContent = getRegistrationApprovalTemplate({
+                name: registration.Student.name,
+                regCode: registration.registration_code,
+                sportName: registration.Sport.name,
+                sportType: registration.Sport.type
+            });
+
+            // Send Email with PDF attachment
+            await sendEmail({
+                to: registration.Student.email,
+                subject: `Confirmed: ${registration.Sport.name} - Energy Sports Meet 2026`,
+                text: emailContent.text,
+                html: emailContent.html,
+                attachments: [
                     {
-                        filename: `confirmation-${registration.registration_code}.pdf`,
+                        filename: `Ticket-${registration.registration_code.replace(/\//g, '-')}.pdf`,
                         content: pdfBuffer
                     }
                 ]
-            );
+            });
 
         } else if (status === 'rejected') {
             registration.status = 'rejected';
             registration.payment_status = 'failed';
             await registration.save({ transaction: t });
 
-            // Optionally send rejection email
+            // Send Rejection Email (Optional but requested for "all usecases")
+            const emailContent = getRegistrationRejectionTemplate({
+                name: registration.Student.name,
+                sportName: registration.Sport.name,
+                reason: remarks || 'Payment verification failed.'
+            });
+
+            await sendEmail({
+                to: registration.Student.email,
+                subject: `Update: ${registration.Sport.name} Registration`,
+                text: emailContent.text,
+                html: emailContent.html
+            });
         }
 
         await t.commit();
@@ -99,6 +100,6 @@ exports.verifyPayment = async (req, res) => {
     } catch (error) {
         if (t) await t.rollback();
         console.error('Verification Error:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        res.status(500).json({ error: error.message || 'Internal Server Error' });
     }
 };

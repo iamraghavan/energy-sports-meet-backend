@@ -12,6 +12,7 @@
   "type": "commonjs",
   "dependencies": {
     "@octokit/rest": "^22.0.1",
+    "axios": "^1.13.5",
     "bcrypt": "^6.0.0",
     "bwip-js": "^4.8.0",
     "compression": "^1.8.1",

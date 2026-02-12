@@ -140,6 +140,55 @@ exports.registerStudent = async (req, res) => {
         }, { transaction: t });
 
         await t.commit();
+
+        // Send Notifications (Background - Don't block the response)
+        const { getRegistrationReceiptTemplate } = require('../utils/emailTemplates');
+        const { sendEmail } = require('../utils/email');
+        const { sendWhatsApp } = require('../utils/whatsapp');
+
+        const triggerNotifications = async () => {
+            // 1. WhatsApp Notification (TryowBot)
+            try {
+                await sendWhatsApp({
+                    phone: mobile,
+                    template_name: 'energy_sports_meet_2026_registration_received',
+                    variables: [
+                        student.name,      // text1 -> {{name}}
+                        sport.name,        // text2 -> {{sportsname}}
+                        registrationCode,  // text3 -> {{regcode}}
+                        'Pending'          // text4 -> {{status}}
+                    ],
+                    buttons: [
+                        registrationCode,  // buttonURL1 -> maps to ?id={{1}} in View Registration
+                        registrationCode   // buttonURL2 -> maps to ?id={{1}} in Download Ticket
+                    ]
+                });
+            } catch (waErr) {
+                console.error('WhatsApp Notification Error:', waErr.message);
+            }
+
+            // 2. Email Notification
+            try {
+                const emailContent = getRegistrationReceiptTemplate({
+                    name: student.name,
+                    regCode: registrationCode,
+                    sportName: sport.name
+                });
+
+                await sendEmail({
+                    to: email,
+                    subject: `Registration Received: ${sport.name} - Energy Sports Meet 2026`,
+                    text: emailContent.text,
+                    html: emailContent.html
+                });
+            } catch (emailErr) {
+                console.error('Email Notification Error:', emailErr.message);
+            }
+        };
+
+        // Fire and forget
+        triggerNotifications();
+
         res.status(201).json({
             message: 'Registration successful',
             registration_code: registrationCode,
@@ -234,7 +283,7 @@ exports.getRegistrationById = async (req, res) => {
 // Download Ticket/Invoice PDF
 exports.downloadTicket = async (req, res) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id || req.query.id;
 
         let whereClause = {};
         if (id.includes('EGSP')) {
@@ -276,7 +325,7 @@ exports.downloadTicket = async (req, res) => {
 // Download Check-In Pass
 exports.downloadCheckIn = async (req, res) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id || req.query.id;
         let whereClause = {};
         if (id.includes('EGSP')) {
             whereClause.registration_code = id;

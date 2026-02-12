@@ -1,10 +1,11 @@
-const { Match, MatchPlayer, Team, Sport, Student } = require('../models');
+const { Match, MatchPlayer, Team, Sport, Student, Registration } = require('../models');
+const { sendEmail } = require('../utils/email');
+const { getMatchScheduledTemplate, getMatchLiveTemplate, getMatchResultTemplate } = require('../utils/emailTemplates');
 
-// Create a Match
 // Create a Match
 exports.createMatch = async (req, res) => {
     try {
-        const { sport_id, team_a_id, team_b_id, start_time, match_type, referee_name } = req.body;
+        const { sport_id, team_a_id, team_b_id, start_time, referee_name } = req.body;
         const match = await Match.create({
             sport_id,
             team_a_id,
@@ -13,6 +14,50 @@ exports.createMatch = async (req, res) => {
             status: 'scheduled',
             referee_name
         });
+
+        // 1. Fetch Details for Notification
+        const fullMatch = await Match.findByPk(match.id, {
+            include: [
+                { model: Team, as: 'TeamA' },
+                { model: Team, as: 'TeamB' },
+                { model: Sport }
+            ]
+        });
+
+        // 2. Fetch Team Member Emails
+        const getEmails = async (teamId) => {
+            if (!teamId) return [];
+            const registrations = await Registration.findAll({
+                where: { team_id: teamId },
+                include: [{ model: Student, attributes: ['email'] }]
+            });
+            return registrations.map(r => r.Student.email);
+        };
+
+        const emailsA = await getEmails(team_a_id);
+        const emailsB = await getEmails(team_b_id);
+        const allRecipientEmails = [...new Set([...emailsA, ...emailsB])];
+
+        // 3. Send Notifications
+        if (allRecipientEmails.length > 0) {
+            const template = getMatchScheduledTemplate({
+                teamAName: fullMatch.TeamA ? fullMatch.TeamA.team_name : 'Team A',
+                teamBName: fullMatch.TeamB ? fullMatch.TeamB.team_name : 'Team B',
+                sportName: fullMatch.Sport.name,
+                startTime: new Date(start_time).toLocaleString(),
+                matchId: match.id
+            });
+
+            // Send to each recipient
+            Promise.all(allRecipientEmails.map(email =>
+                sendEmail({
+                    to: email,
+                    subject: `Match Scheduled: ${fullMatch.Sport.name}`,
+                    text: template.text,
+                    html: template.html
+                })
+            )).catch(err => console.error('Delayed Match Emails Error:', err.message));
+        }
 
         // Emit Socket Event
         const io = req.app.get('io');
@@ -72,19 +117,72 @@ exports.updateScore = async (req, res) => {
         const { matchId } = req.params;
         const { score_details, status, winner_id } = req.body;
 
-        const match = await Match.findByPk(matchId);
+        const match = await Match.findByPk(matchId, {
+            include: [
+                { model: Team, as: 'TeamA' },
+                { model: Team, as: 'TeamB' },
+                { model: Sport }
+            ]
+        });
         if (!match) return res.status(404).json({ error: 'Match not found' });
 
+        const prevStatus = match.status;
         match.score_details = score_details;
         if (status) match.status = status;
         if (winner_id) match.winner_id = winner_id;
 
         await match.save();
 
+        // --- BROADCAST NOTIFICATIONS ---
+        // Notify all students registered for this sport
+        const handleBroadcast = async (templateFunc, data) => {
+            const registrations = await Registration.findAll({
+                where: { sport_id: match.sport_id, status: 'approved' },
+                include: [{ model: Student, attributes: ['email'] }]
+            });
+            const allEmails = registrations.map(r => r.Student.email);
+            if (allEmails.length === 0) return;
+
+            const template = templateFunc(data);
+            Promise.all(allEmails.map(email =>
+                sendEmail({
+                    to: email,
+                    subject: `Broadcast: ${match.Sport.name} - ${status}`,
+                    text: template.text,
+                    html: template.html
+                })
+            )).catch(err => console.error('Broadcast Error:', err.message));
+        };
+
+        // 1. Match Goes Live
+        if (prevStatus === 'scheduled' && status === 'live') {
+            handleBroadcast(getMatchLiveTemplate, {
+                teamAName: match.TeamA ? match.TeamA.team_name : 'Team A',
+                teamBName: match.TeamB ? match.TeamB.team_name : 'Team B',
+                sportName: match.Sport.name
+            });
+        }
+
+        // 2. Match Completed
+        if (prevStatus !== 'completed' && status === 'completed') {
+            const winner = await Team.findByPk(winner_id);
+            // Format score for email (e.g. "Team A: 50 | Team B: 40")
+            const scoreSummary = Object.entries(score_details || {}).map(([tid, score]) => {
+                const name = tid === match.team_a_id ? (match.TeamA?.team_name || 'Team A') : (match.TeamB?.team_name || 'Team B');
+                return `${name}: ${typeof score === 'object' ? JSON.stringify(score) : score}`;
+            }).join(' | ');
+
+            handleBroadcast(getMatchResultTemplate, {
+                teamAName: match.TeamA ? match.TeamA.team_name : 'Team A',
+                teamBName: match.TeamB ? match.TeamB.team_name : 'Team B',
+                winnerName: winner ? winner.team_name : 'TBD',
+                finalScore: scoreSummary,
+                matchId: match.id
+            });
+        }
+
         // Emit Socket Events
         const io = req.app.get('io');
-
-        // 1. Detailed Update (For inside the match view)
         io.to(matchId).emit('score_updated', {
             matchId,
             scoreDetails: score_details,
@@ -92,11 +190,10 @@ exports.updateScore = async (req, res) => {
             winnerId: winner_id
         });
 
-        // 2. Overview Update (For the main dashboard list)
         io.to('live_overview').emit('overview_update', {
             matchId,
             sportId: match.sport_id,
-            scoreSummary: score_details, // Frontend can parse main score
+            scoreSummary: score_details,
             status: match.status
         });
 
