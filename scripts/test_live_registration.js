@@ -13,7 +13,7 @@ async function testLiveRegistration() {
     form.append('name', 'Raghavan Jeeva');
     form.append('email', 'raghavanofficials@gmail.com');
     form.append('mobile', '6382087377');
-    form.append('whatsapp', '916382087377'); // Added 91 prefix
+    form.append('whatsapp', '919942502245'); // Added 91 prefix
     form.append('city', 'Nagapattinam');
     form.append('state', 'Tamil Nadu');
     form.append('other_college', 'EGS Pillay Engineering College');

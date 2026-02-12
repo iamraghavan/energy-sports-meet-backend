@@ -1,6 +1,8 @@
 const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
 const bwipjs = require('bwip-js');
+const path = require('path');
+const fs = require('fs');
 
 /**
  * Generate Registration Confirmation PDF (Train Ticket Style)
@@ -44,7 +46,12 @@ exports.generateRegistrationPDF = async (registration) => {
             const headerY = margin;
 
             // 1. Logo (Left)
-            doc.fontSize(20).font('Helvetica-Bold').fillColor(primaryColor).text('ENERGY SPORTS', margin, headerY);
+            const logoPath = path.join(process.cwd(), 'src/public/Energy_college_logo.png');
+            if (fs.existsSync(logoPath)) {
+                doc.image(logoPath, margin, headerY - 5, { height: 45 });
+            } else {
+                doc.fontSize(20).font('Helvetica-Bold').fillColor(primaryColor).text('ENERGY SPORTS', margin, headerY);
+            }
 
             // 2. Right Section Calculation
             const qrSize = 55;
@@ -102,19 +109,24 @@ exports.generateRegistrationPDF = async (registration) => {
             const drawRow = (label1, val1, label2, val2, isHeader = false, allowWrap = false) => {
                 const labelFont = 8;
                 const valueFont = 8;
+                const padding = 6;
 
                 // Calculate height based on wrapped text if allowed
                 const valWidth = allowWrap ? 170 : 170;
-                const h1 = allowWrap ? doc.heightOfString(val1, { width: valWidth, size: valueFont }) + 6 : 16;
-                const h2 = (label2 && allowWrap) ? doc.heightOfString(val2, { width: 140, size: valueFont }) + 6 : 16;
-                const dynamicRowHeight = Math.max(h1, h2, 16);
+                const h1 = allowWrap ? doc.heightOfString(val1, { width: valWidth, size: valueFont }) + padding : 16;
+                const h2 = (label2 && allowWrap) ? doc.heightOfString(val2, { width: 140, size: valueFont }) + padding : 16;
+
+                // Add extra "big space" for specific rows if requested by the user
+                const extraSpace = (allowWrap && label1 === 'Sports Registered') ? 12 : 0;
+                const dynamicRowHeight = Math.max(h1, h2, 16) + extraSpace;
 
                 if (isHeader) {
                     doc.rect(margin, currentY, contentWidth, dynamicRowHeight).fill(tableHeaderColor);
                     doc.fillColor('black');
                 }
 
-                const textY = currentY + (dynamicRowHeight / 2) - (labelFont / 2);
+                // Vertical alignment: center text block within the calculated height
+                const textY = currentY + (dynamicRowHeight - Math.max(h1, h2, 16)) / 2 + (padding / 2);
 
                 doc.fontSize(labelFont).font('Helvetica-Bold').fillColor('black').text(label1, col1X, textY);
 
@@ -135,7 +147,7 @@ exports.generateRegistrationPDF = async (registration) => {
 
             const paidDate = registration.Payment && registration.Payment.verified_at ? new Date(registration.Payment.verified_at).toLocaleDateString() : 'Pending';
             const amount = registration.Payment ? `Rs. ${registration.Payment.amount}` : 'N/A';
-            const eventDate = 'Feb 2026';
+            const eventDate = '12th & 13th, 14th March 2026';
 
             // Rows
             const sportSummary = registration.Sports.map(s => `${s.name} (${s.category})`).join(', ');
@@ -143,7 +155,7 @@ exports.generateRegistrationPDF = async (registration) => {
             drawRow('Transaction ID', registration.Payment?.txn_id || '-', 'Payment Status', registration.payment_status.toUpperCase());
 
             // Sports Row - ENABLE WRAPPING
-            drawRow('Sports registered', sportSummary, 'Event Date', eventDate, false, true);
+            drawRow('Sports Registered', sportSummary, 'Event Date', eventDate, false, true);
 
             drawRow('College', registration.college_name || 'Other', 'Accommodation', registration.accommodation_needed ? 'Yes' : 'No');
             drawRow('Total Fare', amount, 'Verified Date', paidDate);
@@ -201,7 +213,7 @@ exports.generateRegistrationPDF = async (registration) => {
 
             // 3. Bottom Text Split
             doc.fontSize(7).fillColor('#666').text('Energy Sports Meet 2026 | Registration Desk: +91 9942502245', margin, bottomLineY + 8, { width: 320, align: 'left' });
-            doc.text('Official Portal: energy.egspgroup.in | Branding Team', pageWidth - margin - 250, bottomLineY + 8, { width: 250, align: 'right' });
+            doc.text('Official Portal: energy.egspgroup.in | Branding & Media Team ', pageWidth - margin - 250, bottomLineY + 8, { width: 250, align: 'right' });
 
             doc.end();
         } catch (error) {
@@ -240,8 +252,16 @@ exports.generateCheckInPDF = async (registration) => {
 
             // --- Header Bar ---
             doc.rect(0, 0, pageWidth, 60).fill(headerBg);
-            doc.fontSize(20).font('Helvetica-Bold').fillColor(headerText).text('OFFICIAL CHECK-IN PASS', 0, 18, { align: 'center' });
-            doc.fontSize(9).font('Helvetica').text('ENERGY SPORTS MEET 2026', 0, 40, { align: 'center' });
+
+            const logoPath = path.join(process.cwd(), 'src/public/Energy_college_logo.png');
+            if (fs.existsSync(logoPath)) {
+                // Adjust logo positioning for dark header
+                doc.image(logoPath, margin, 10, { height: 40 });
+                doc.fontSize(16).font('Helvetica-Bold').fillColor(headerText).text('OFFICIAL CHECK-IN PASS', 150, 22, { align: 'right', width: pageWidth - 150 - margin });
+            } else {
+                doc.fontSize(20).font('Helvetica-Bold').fillColor(headerText).text('OFFICIAL CHECK-IN PASS', 0, 18, { align: 'center' });
+                doc.fontSize(9).font('Helvetica').text('ENERGY SPORTS MEET 2026', 0, 40, { align: 'center' });
+            }
 
             // --- Main Layout ---
             const leftColX = margin;
