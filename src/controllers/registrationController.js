@@ -12,50 +12,31 @@ exports.registerStudent = async (req, res) => {
         console.log('Body:', req.body);
 
         let {
-            name, dob, gender, email, mobile, whatsapp, city, state,
-            college_id, other_college, department, year_of_study,
+            name, email, mobile, whatsapp, city, state,
+            college_id, other_college,
             selected_sport_ids, // Expecting Array: [1, 5, 8]
             accommodation_needed,
             college_contact, college_email, pd_name, pd_whatsapp,
             txn_id
         } = req.body;
 
-        // Normalize selected_sport_ids
-        if (typeof selected_sport_ids === 'string') {
-            selected_sport_ids = selected_sport_ids.split(',').map(s => parseInt(s.trim()));
-        }
-
-        if (!selected_sport_ids || !Array.isArray(selected_sport_ids) || selected_sport_ids.length === 0) {
-            throw new Error('At least one sport must be selected.');
-        }
+        // ... existing code ...
 
         // Basic Validation
-        const requiredFields = ['name', 'dob', 'gender', 'email', 'mobile', 'department', 'year_of_study', 'txn_id'];
+        const requiredFields = ['name', 'email', 'mobile', 'txn_id'];
         const missing = requiredFields.filter(f => !req.body[f]);
         if (missing.length > 0) {
             throw new Error(`Missing required fields: ${missing.join(', ')}`);
         }
 
-        // 1. Handle College Update (PD Info)
-        let finalCollegeId = college_id;
-        if (!college_id || college_id === 'other' || college_id === '') {
-            finalCollegeId = null;
-        } else {
-            // Update college info if provided (PD registration case)
-            await College.update({
-                college_contact,
-                college_email,
-                pd_name,
-                pd_whatsapp
-            }, { where: { id: college_id }, transaction: t });
-        }
+        // ... existing code ...
 
         // 2. Student Handling (Individual detail)
         let student = await Student.findOne({ where: { email }, transaction: t });
         if (!student) {
             student = await Student.create({
-                name, dob, gender, email, mobile, whatsapp, city, state,
-                college_id: finalCollegeId, other_college, department, year_of_study
+                name, email, mobile, whatsapp, city, state,
+                college_id: finalCollegeId, other_college
             }, { transaction: t });
         }
 

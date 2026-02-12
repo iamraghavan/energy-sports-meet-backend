@@ -13,11 +13,11 @@ const Student = sequelize.define('Student', {
     },
     dob: {
         type: DataTypes.DATEONLY,
-        allowNull: false
+        allowNull: true
     },
     gender: {
         type: DataTypes.ENUM('Male', 'Female', 'Other'),
-        allowNull: false
+        allowNull: true
     },
     email: {
         type: DataTypes.STRING,
@@ -54,11 +54,11 @@ const Student = sequelize.define('Student', {
     },
     department: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: true
     },
     year_of_study: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: true
     }
 }, {
     timestamps: true,

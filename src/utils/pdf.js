@@ -123,7 +123,7 @@ exports.generateRegistrationPDF = async (registration) => {
             drawRow(`Ref: ${registration.registration_code}`, '', `Booked: ${new Date(registration.created_at).toLocaleDateString()}`, '', true);
             drawRow('Transaction ID', registration.Payment?.txn_id || '-', 'Payment Status', registration.payment_status.toUpperCase());
             drawRow('Sports', sportSummary, 'Event Date', eventDate);
-            drawRow('College', registration.College ? registration.College.name : 'Other', 'Department', registration.Student.department);
+            drawRow('College', registration.College ? registration.College.name : 'Other', 'Accommodation', registration.accommodation_needed ? 'Yes' : 'No');
             drawRow('Total Fare', amount, 'Verified Date', paidDate);
 
             // --- Participant Details ---
@@ -263,8 +263,6 @@ exports.generateCheckInPDF = async (registration) => {
             field('Sports:', sportSummary, currentY);
             currentY += rowHeight;
             field('College:', registration.College?.name || 'Other', currentY);
-            currentY += rowHeight;
-            field('Department:', registration.Student.department, currentY);
             currentY += rowHeight;
             field('Status:', registration.status.toUpperCase(), currentY);
             currentY += rowHeight;
