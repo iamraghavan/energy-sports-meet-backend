@@ -9,8 +9,12 @@ const Sport = sequelize.define('Sport', {
     },
     name: {
         type: DataTypes.STRING,
+        allowNull: false
+    },
+    category: {
+        type: DataTypes.ENUM('Boys', 'Girls'),
         allowNull: false,
-        unique: true
+        defaultValue: 'Boys'
     },
     type: {
         type: DataTypes.ENUM('Individual', 'Team'),

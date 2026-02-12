@@ -18,6 +18,22 @@ const College = sequelize.define('College', {
     state: {
         type: DataTypes.STRING,
         allowNull: false
+    },
+    college_contact: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    college_email: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    pd_name: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    pd_whatsapp: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 }, {
     timestamps: false,

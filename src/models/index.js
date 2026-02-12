@@ -9,12 +9,17 @@ const User = require('./User');
 
 const Match = require('./Match');
 const MatchPlayer = require('./MatchPlayer');
+const RegistrationSport = require('./RegistrationSport');
 
 // Associations
 
 // Student - College
 College.hasMany(Student, { foreignKey: 'college_id' });
 Student.belongsTo(College, { foreignKey: 'college_id' });
+
+// Registration - College
+College.hasMany(Registration, { foreignKey: 'college_id' });
+Registration.belongsTo(College, { foreignKey: 'college_id' });
 
 // Team - Sport
 Sport.hasMany(Team, { foreignKey: 'sport_id' });
@@ -28,9 +33,15 @@ Team.belongsTo(Student, { foreignKey: 'captain_id', as: 'Captain' });
 Student.hasMany(Registration, { foreignKey: 'student_id' });
 Registration.belongsTo(Student, { foreignKey: 'student_id' });
 
-// Registration - Sport
-Sport.hasMany(Registration, { foreignKey: 'sport_id' });
-Registration.belongsTo(Sport, { foreignKey: 'sport_id' });
+// Registration <-> Sport (Many-to-Many)
+Registration.belongsToMany(Sport, { through: RegistrationSport, foreignKey: 'registration_id' });
+Sport.belongsToMany(Registration, { through: RegistrationSport, foreignKey: 'sport_id' });
+
+// Direct access for join table if needed
+Registration.hasMany(RegistrationSport, { foreignKey: 'registration_id' });
+RegistrationSport.belongsTo(Registration, { foreignKey: 'registration_id' });
+
+// ... (Match Associations etc)
 
 // Registration - Team
 Team.hasMany(Registration, { foreignKey: 'team_id' });

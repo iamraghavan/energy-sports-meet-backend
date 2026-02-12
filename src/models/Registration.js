@@ -14,11 +14,16 @@ const Registration = sequelize.define('Registration', {
     },
     student_id: {
         type: DataTypes.UUID,
-        allowNull: false
+        allowNull: true // Optional if PD is registering only college details first
     },
-    sport_id: {
+    college_id: {
         type: DataTypes.INTEGER,
         allowNull: false
+    },
+    total_amount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.00
     },
     team_id: {
         type: DataTypes.UUID,

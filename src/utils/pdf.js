@@ -119,16 +119,16 @@ exports.generateRegistrationPDF = async (registration) => {
             const eventDate = 'Feb 2026';
 
             // Rows
+            const sportSummary = registration.Sports.map(s => `${s.name} (${s.category})`).join(', ');
             drawRow(`Ref: ${registration.registration_code}`, '', `Booked: ${new Date(registration.created_at).toLocaleDateString()}`, '', true);
             drawRow('Transaction ID', registration.Payment?.txn_id || '-', 'Payment Status', registration.payment_status.toUpperCase());
-            drawRow('Sport', registration.Sport.name, 'Event Date', eventDate);
-            drawRow('Category', registration.Sport.type, 'Accommodation', registration.accommodation_needed ? 'Yes' : 'No');
-            drawRow('College', registration.Student.College ? registration.Student.College.name : 'Other', 'Department', registration.Student.department);
+            drawRow('Sports', sportSummary, 'Event Date', eventDate);
+            drawRow('College', registration.College ? registration.College.name : 'Other', 'Department', registration.Student.department);
             drawRow('Total Fare', amount, 'Verified Date', paidDate);
 
             // --- Participant Details ---
             currentY += 10;
-            doc.fontSize(10).font('Helvetica-Bold').text('Participant', margin, currentY);
+            doc.fontSize(10).font('Helvetica-Bold').text('Registration Details', margin, currentY);
             currentY += 12;
 
             // Table Header
@@ -136,25 +136,27 @@ exports.generateRegistrationPDF = async (registration) => {
             doc.fillColor('black').fontSize(7);
             const pHeadY = currentY + 2.5; // Centered
             doc.text('S.No', margin + 5, pHeadY);
-            doc.text('Name', margin + 30, pHeadY);
-            doc.text('Gender', margin + 180, pHeadY);
-            doc.text('Code', margin + 250, pHeadY);
+            doc.text('Game Name', margin + 30, pHeadY);
+            doc.text('Category', margin + 180, pHeadY);
+            doc.text('Amount', margin + 250, pHeadY);
             doc.text('Status', margin + 400, pHeadY);
 
             doc.rect(margin, currentY, contentWidth, 12).stroke();
             currentY += 12;
 
-            // Table Row
+            // Table Rows for each sport
             doc.font('Helvetica');
-            const pRowY = currentY + 3.5; // Centered
-            doc.text('1', margin + 5, pRowY);
-            doc.text(registration.Student.name, margin + 30, pRowY);
-            doc.text(registration.Student.gender, margin + 180, pRowY);
-            doc.text(registration.registration_code, margin + 250, pRowY);
-            doc.text(registration.status.toUpperCase(), margin + 400, pRowY);
+            registration.Sports.forEach((sport, index) => {
+                const sRowY = currentY + 3.5;
+                doc.text(index + 1, margin + 5, sRowY);
+                doc.text(sport.name, margin + 30, sRowY);
+                doc.text(sport.category, margin + 180, sRowY);
+                doc.text(`Rs. ${sport.amount}`, margin + 250, sRowY);
+                doc.text(registration.status.toUpperCase(), margin + 400, sRowY);
 
-            doc.rect(margin, currentY, contentWidth, 14).stroke();
-            currentY += 14;
+                doc.rect(margin, currentY, contentWidth, 14).stroke();
+                currentY += 14;
+            });
 
             // ================= FOOTER =================
             // Reduct space: Use currentY if it hasn't reached the safety zone
@@ -257,11 +259,10 @@ exports.generateCheckInPDF = async (registration) => {
                 doc.moveTo(leftColX, y + 15).lineTo(leftColX + leftColWidth, y + 15).strokeColor('#eee').stroke();
             };
 
-            field('Sport:', registration.Sport.name, currentY);
+            const sportSummary = registration.Sports.map(s => `${s.name} (${s.category})`).join(', ');
+            field('Sports:', sportSummary, currentY);
             currentY += rowHeight;
-            field('Category:', registration.Sport.type, currentY);
-            currentY += rowHeight;
-            field('College:', registration.Student.College?.name || 'Other', currentY);
+            field('College:', registration.College?.name || 'Other', currentY);
             currentY += rowHeight;
             field('Department:', registration.Student.department, currentY);
             currentY += rowHeight;
