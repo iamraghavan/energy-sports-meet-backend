@@ -19,7 +19,7 @@ async function appendRegistrationToSheet(data) {
             try {
                 auth = new google.auth.GoogleAuth({
                     credentials: JSON.parse(credentialsJson),
-                    scopes: ['https://www.googleapis.com/auth/sheets'],
+                    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
                 });
                 console.log('✅ Google Sheets Auth: Using Environment Variable');
             } catch (e) {
@@ -37,7 +37,7 @@ async function appendRegistrationToSheet(data) {
         }
 
         if (!auth) {
-            console.warn('⚠️ Google Sheets Backup: Neither valid GOOGLE_CREDENTIALS_JSON nor credentials.json found. Skipping.');
+            console.warn('❌ Google Sheets Backup: Neither valid GOOGLE_CREDENTIALS_JSON nor credentials.json found. Skipping.');
             return;
         }
 

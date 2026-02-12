@@ -169,7 +169,7 @@ exports.registerStudent = async (req, res) => {
                 await sendWhatsApp({
                     phone: mobile,
                     template_name: 'energy_sports_meet_2026_registration_received',
-                    variables: [name, sportSummary, registrationCode, 'Pending'],
+                    variables: [name, registrationCode, sportSummary, 'Pending'],
                     buttons: [registrationCode, registrationCode]
                 });
                 console.log(`✅ WhatsApp sent for ${registrationCode}`);

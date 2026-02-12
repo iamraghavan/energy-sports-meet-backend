@@ -11,6 +11,10 @@ const transporter = nodemailer.createTransport({
     },
     // Force IPv4 as some clouds (Render) have IPv6 routing issues with Gmail SMTP
     family: 4,
+    // Increase timeouts to prevent "Connection timeout" on slow networks
+    connectionTimeout: 20000, // 20 seconds
+    greetingTimeout: 20000,
+    socketTimeout: 30000,
     // Deliverability Headers
     headers: {
         'X-Entity-Ref-ID': 'energy-sports-meet-2026',

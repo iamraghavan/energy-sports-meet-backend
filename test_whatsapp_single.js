@@ -4,12 +4,12 @@ async function runTest() {
     console.log('🚀 Running Confirmed WhatsApp Test (Postman Sample)...');
 
     const testData = {
-        phone: '919942502245',
+        phone: '916382087377',
         template_name: 'energy_sports_meet_2026_registration_received',
         variables: [
-            'Sanjay',                     // text1 -> {{name}}
-            'Cricket',                    // text2 -> {{sportsname}}
-            'EGSP/ENERGY/2026/K8GBH4P8',  // text3 -> {{regcode}}
+            'Raghavan',                   // text1 -> {{name}}
+            'Kabaddi',                    // text2 -> {{sportsname}}
+            'EGSP/ENERGY/2026/TEST',      // text3 -> {{regcode}}
             'Pending'                     // text4 -> {{status}}
         ],
         buttons: [
