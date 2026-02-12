@@ -36,26 +36,40 @@ exports.registerStudent = async (req, res) => {
             throw new Error(`Missing required fields: ${missing.join(', ')}`);
         }
 
-        // 1. Handle College Update (PD Info)
-        let finalCollegeId = college_id;
-        if (!college_id || college_id === 'other' || college_id === '') {
-            finalCollegeId = null;
+        // 1. Handle College Metadata
+        let finalCollegeName = '';
+        let finalCity = city;
+        let finalState = state;
+
+        if (college_id && college_id !== 'other' && college_id !== '') {
+            const college = await College.findByPk(college_id, { transaction: t });
+            if (college) {
+                finalCollegeName = college.name;
+                finalCity = college.city || city;
+                finalState = college.state || state;
+
+                // Update college PD info if provided
+                await college.update({
+                    college_contact,
+                    college_email,
+                    pd_name,
+                    pd_whatsapp
+                }, { transaction: t });
+            } else {
+                throw new Error('Selected college not found.');
+            }
+        } else if (other_college) {
+            finalCollegeName = other_college;
         } else {
-            // Update college info if provided (PD registration case)
-            await College.update({
-                college_contact,
-                college_email,
-                pd_name,
-                pd_whatsapp
-            }, { where: { id: college_id }, transaction: t });
+            throw new Error('College name is required.');
         }
 
-        // 2. Student Handling (Individual detail)
+        // 2. Student Handling
         let student = await Student.findOne({ where: { email }, transaction: t });
         if (!student) {
             student = await Student.create({
-                name, email, mobile, whatsapp, city, state,
-                college_id: finalCollegeId, other_college
+                name, email, mobile, whatsapp, city: finalCity, state: finalState,
+                other_college: finalCollegeName
             }, { transaction: t });
         }
 
@@ -71,7 +85,7 @@ exports.registerStudent = async (req, res) => {
 
         const totalAmount = sports.reduce((sum, s) => sum + parseFloat(s.amount), 0);
 
-        // 4. Create Registration
+        // 4. Create Registration with Metadata
         const currentYear = new Date().getFullYear();
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let randomSuffix = '';
@@ -81,7 +95,13 @@ exports.registerStudent = async (req, res) => {
         const registration = await Registration.create({
             registration_code: registrationCode,
             student_id: student.id,
-            college_id: finalCollegeId,
+            college_name: finalCollegeName,
+            college_city: finalCity,
+            college_state: finalState,
+            pd_name,
+            pd_whatsapp,
+            college_email,
+            college_contact,
             total_amount: totalAmount,
             accommodation_needed: accommodation_needed === 'true' || accommodation_needed === true,
             payment_status: 'pending',
@@ -147,10 +167,18 @@ exports.registerStudent = async (req, res) => {
                     name,
                     email,
                     mobile,
+                    whatsapp,
+                    city,
+                    state,
                     sports: sportSummary,
                     amount: totalAmount,
                     txn_id,
-                    college: finalCollegeId ? 'ID: ' + finalCollegeId : other_college || 'Other'
+                    payment_status: 'Pending',
+                    status: 'Pending',
+                    accommodation: accommodation_needed === 'true' || accommodation_needed === true,
+                    college: finalCollegeId ? 'ID: ' + finalCollegeId : other_college || 'Other',
+                    pd_name,
+                    pd_whatsapp
                 });
             } catch (err) {
                 console.error('Notification/Backup Error:', err.message);

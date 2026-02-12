@@ -17,9 +17,7 @@ const RegistrationSport = require('./RegistrationSport');
 College.hasMany(Student, { foreignKey: 'college_id' });
 Student.belongsTo(College, { foreignKey: 'college_id' });
 
-// Registration - College
-College.hasMany(Registration, { foreignKey: 'college_id' });
-Registration.belongsTo(College, { foreignKey: 'college_id' });
+// Registration - College association removed (moved to metadata)
 
 // Team - Sport
 Sport.hasMany(Team, { foreignKey: 'sport_id' });
