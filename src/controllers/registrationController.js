@@ -223,11 +223,26 @@ exports.registerStudent = async (req, res) => {
         triggerNotifications();
 
         res.status(201).json({
+            status: 'success',
             message: 'Registration successful',
-            id: registration.id,
-            registration_code: registrationCode,
-            total_amount: totalAmount,
-            selected_sports: sports.map(s => ({ name: s.name, category: s.category }))
+            data: {
+                registration_id: registration.id,
+                registration_code: registrationCode,
+                student: {
+                    name,
+                    email
+                },
+                payment: {
+                    total_amount: totalAmount,
+                    txn_id: txn_id,
+                    status: 'pending'
+                },
+                sports: sports.map(s => ({ id: s.id, name: s.name, category: s.category })),
+                team: finalTeamId ? {
+                    id: finalTeamId,
+                    name: team_name
+                } : null
+            }
         });
 
     } catch (error) {

@@ -2,19 +2,18 @@ const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT),
-    secure: process.env.SMTP_SECURE === 'true',
+    service: 'gmail', // Let nodemailer handle the complex Gmail settings
+    pool: true,      // Use connection pooling for better reliability
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
     },
-    // Force IPv4 as some clouds (Render) have IPv6 routing issues with Gmail SMTP
-    family: 4,
     // Increase timeouts to prevent "Connection timeout" on slow networks
-    connectionTimeout: 20000, // 20 seconds
-    greetingTimeout: 20000,
-    socketTimeout: 30000,
+    connectionTimeout: 30000, // 30 seconds
+    greetingTimeout: 30000,
+    socketTimeout: 60000,
+    // Force IPv4 fallback just in case
+    family: 4,
     // Deliverability Headers
     headers: {
         'X-Entity-Ref-ID': 'energy-sports-meet-2026',
