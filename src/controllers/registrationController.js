@@ -191,6 +191,7 @@ exports.registerStudent = async (req, res) => {
 
         res.status(201).json({
             message: 'Registration successful',
+            id: registration.id,
             registration_code: registrationCode,
             student_id: student.id,
             payment_status: 'pending'
