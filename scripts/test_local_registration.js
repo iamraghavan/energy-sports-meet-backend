@@ -17,7 +17,9 @@ async function testLocalRegistration() {
     form.append('city', 'Local City');
     form.append('state', 'Local State');
     form.append('other_college', 'Local University');
-    form.append('selected_sport_ids', '1,2'); // Dummy IDs
+    form.append('selected_sport_ids', '6'); // Kabaddi (Team)
+    form.append('create_team', 'true');
+    form.append('team_name', 'Local Raiders');
     form.append('txn_id', `TXN_LOCAL_${Date.now()}`);
 
     const screenshotPath = path.join(__dirname, '../node_modules/png-js/images/ball.png');

@@ -5,7 +5,7 @@ exports.getAllTeams = async (req, res) => {
     try {
         const teams = await Team.findAll({
             include: [
-                { model: Sport, attributes: ['name', 'type'] },
+                { model: Sport, attributes: ['id', 'name', 'category', 'type'] },
                 { model: Student, as: 'Captain', attributes: ['name', 'email'] }
             ]
         });
@@ -21,7 +21,7 @@ exports.getTeamById = async (req, res) => {
         const { id } = req.params;
         const team = await Team.findByPk(id, {
             include: [
-                { model: Sport, attributes: ['name'] },
+                { model: Sport, attributes: ['id', 'name', 'category'] },
                 { model: Student, as: 'Captain', attributes: ['name', 'mobile'] }
             ]
         });
@@ -45,12 +45,44 @@ exports.getTeamById = async (req, res) => {
 exports.getTeamsBySport = async (req, res) => {
     try {
         const { sportId } = req.params;
-        const teams = await Team.findAll({
+
+        // 1. Try to find explicit Team records
+        let teams = await Team.findAll({
             where: { sport_id: sportId },
             include: [
+                { model: Sport, attributes: ['id', 'name', 'category'] },
                 { model: Student, as: 'Captain', attributes: ['name'] }
             ]
         });
+
+        // 2. If no teams found, fallback to showing all registrations for this sport
+        // This ensures the public view is not empty if registrations exist
+        if (teams.length === 0) {
+            const registrations = await Registration.findAll({
+                include: [
+                    {
+                        model: Sport,
+                        where: { id: sportId },
+                        attributes: ['id', 'name', 'category']
+                    },
+                    { model: Student, attributes: ['name'] }
+                ],
+                order: [['created_at', 'ASC']]
+            });
+
+            // Format registrations to look like team objects for the frontend
+            teams = registrations.map(reg => ({
+                id: reg.id,
+                team_name: reg.college_name || reg.Student?.name || 'Independent Player',
+                sport_id: sportId,
+                captain_id: reg.student_id,
+                locked: false,
+                Sport: reg.Sports?.[0], // In belongsToMany, it returns an array
+                Captain: reg.Student,
+                is_registration_based: true // Flag to distinguish
+            }));
+        }
+
         res.json(teams);
     } catch (error) {
         res.status(500).json({ error: error.message });

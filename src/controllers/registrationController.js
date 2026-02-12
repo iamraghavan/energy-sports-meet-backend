@@ -17,7 +17,8 @@ exports.registerStudent = async (req, res) => {
             selected_sport_ids, // Expecting Array: [1, 5, 8]
             accommodation_needed,
             college_contact, college_email, pd_name, pd_whatsapp,
-            txn_id
+            txn_id,
+            create_team, team_name
         } = req.body;
 
         // Normalize selected_sport_ids
@@ -107,6 +108,28 @@ exports.registerStudent = async (req, res) => {
             payment_status: 'pending',
             status: 'pending'
         }, { transaction: t });
+
+        // 4b. Team Creation (If applicable)
+        let finalTeamId = null;
+        if ((create_team === 'true' || create_team === true) && team_name) {
+            // Find a team sport among selected
+            const teamSport = sports.find(s => s.type === 'Team');
+            if (teamSport) {
+                const team = await Team.create({
+                    team_name,
+                    sport_id: teamSport.id,
+                    captain_id: student.id,
+                    locked: false
+                }, { transaction: t });
+                finalTeamId = team.id;
+
+                // Link registration to team and mark as captain
+                await registration.update({
+                    team_id: finalTeamId,
+                    is_captain: true
+                }, { transaction: t });
+            }
+        }
 
         // 5. Link Sports via Join Table
         const registrationSportsData = selected_sport_ids.map(sid => ({
