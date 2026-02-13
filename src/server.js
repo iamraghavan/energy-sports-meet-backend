@@ -9,7 +9,7 @@ const dns = require('dns');
 // when connecting to services like Google APIs or SMTP servers that may have IPv6 issues.
 dns.setDefaultResultOrder('ipv4first');
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 const server = http.createServer(app);
 const io = new Server(server, {
