@@ -1,3 +1,8 @@
+const express = require('express');
+const router = express.Router();
+const adminController = require('../controllers/adminController');
+const { protect, authorize } = require('../middlewares/authMiddleware');
+
 // User Management
 router.get('/users', protect, authorize('super_admin'), adminController.getAllUsers);
 router.post('/users', protect, authorize('super_admin'), adminController.createUser);
