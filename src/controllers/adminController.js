@@ -1,4 +1,4 @@
-const { Registration, Payment, Student, Sport, Team, College, User, sequelize } = require('../models');
+const { Registration, Payment, Student, Sport, Team, College, User, RegistrationSport, sequelize } = require('../models');
 const { generateRegistrationPDF } = require('../utils/pdf');
 const NotificationService = require('../services/notificationService');
 const { Op } = require('sequelize');
@@ -35,9 +35,12 @@ exports.verifyPayment = async (req, res) => {
         }
 
         // RBAC Check for Sports Head
-        if (req.user.role === 'sports_head' && registration.sport_id !== req.user.assigned_sport_id) {
-            await t.rollback();
-            return res.status(403).json({ error: 'Not authorized for this sport' });
+        if (req.user.role === 'sports_head') {
+            const hasSportMatched = registration.Sports.some(s => s.id === req.user.assigned_sport_id);
+            if (!hasSportMatched) {
+                await t.rollback();
+                return res.status(403).json({ error: 'Not authorized for this sport' });
+            }
         }
 
         if (status === 'approved') {
@@ -82,9 +85,16 @@ exports.getAnalytics = async (req, res) => {
         const approvedPayments = await Registration.count({ where: { status: 'approved' } });
         const pendingPayments = await Registration.count({ where: { status: 'pending' } });
 
-        const registrationsBySport = await Registration.findAll({
-            attributes: ['sport_id', [sequelize.fn('COUNT', 'id'), 'count']],
-            include: [{ model: Sport, attributes: ['name'] }],
+        // Count registrations by sport via the RegistrationSport junction table
+        const registrationsBySport = await RegistrationSport.findAll({
+            attributes: [
+                'sport_id',
+                [sequelize.fn('COUNT', sequelize.col('registration_id')), 'count']
+            ],
+            include: [{
+                model: Sport,
+                attributes: ['name']
+            }],
             group: ['sport_id', 'Sport.id']
         });
 

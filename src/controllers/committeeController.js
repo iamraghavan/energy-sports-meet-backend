@@ -7,14 +7,20 @@ exports.getRegistrations = async (req, res) => {
         const { search, sport_id, status } = req.query;
         let where = {};
 
-        if (sport_id) where.sport_id = sport_id;
         if (status) where.status = status;
 
         const registrations = await Registration.findAll({
             where,
             include: [
-                { model: Student, where: search ? { name: { [require('sequelize').Op.like]: `%${search}%` } } : {} },
-                { model: Sport }
+                {
+                    model: Student,
+                    where: search ? { name: { [require('sequelize').Op.like]: `%${search}%` } } : {}
+                },
+                {
+                    model: Sport,
+                    where: sport_id ? { id: sport_id } : {},
+                    required: !!sport_id
+                }
             ],
             limit: 50,
             order: [['createdAt', 'DESC']]
