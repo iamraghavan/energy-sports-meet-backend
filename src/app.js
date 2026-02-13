@@ -38,6 +38,8 @@ app.use('/api/v1/register', registrationRoutes);
 app.use('/api/v1/admin', require('./routes/adminRoutes'));
 app.use('/api/v1/matches', require('./routes/matchRoutes'));
 app.use('/api/v1/committee', require('./routes/committeeRoutes'));
+app.use('/api/v1/sports-head', require('./routes/sportsHeadRoutes'));
+app.use('/api/v1/scorer', require('./routes/scorerRoutes'));
 app.use('/api/v1/teams', require('./routes/teamRoutes'));
 
 // Health Check

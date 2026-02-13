@@ -1,32 +1,46 @@
-const { Registration } = require('../models');
+const { Registration, Student, College, Sport } = require('../models');
 
-exports.checkInStudent = async (req, res) => {
+// @desc    List registrations for Committee
+// @access  Private (Committee/Admin)
+exports.getRegistrations = async (req, res) => {
     try {
-        const { registrationId } = req.params;
-        const { status } = req.body; // 'present'
+        const { search, sport_id, status } = req.query;
+        let where = {};
 
-        const registration = await Registration.findByPk(registrationId);
+        if (sport_id) where.sport_id = sport_id;
+        if (status) where.status = status;
 
-        if (!registration) {
-            return res.status(404).json({ error: 'Registration not found' });
-        }
+        const registrations = await Registration.findAll({
+            where,
+            include: [
+                { model: Student, where: search ? { name: { [require('sequelize').Op.like]: `%${search}%` } } : {} },
+                { model: Sport }
+            ],
+            limit: 50,
+            order: [['createdAt', 'DESC']]
+        });
 
-        // We can add a 'check_in_time' column to Registration model or just log it for now
-        // The prompt asked for "update the checkin time"
-        // Since we don't have that column in the defined model yet, let's assume we use 'updatedAt' or add it.
-        // For MVP, let's just update status if we have a status like 'checked_in'.
-        // Existing statuses: 'pending', 'approved', 'rejected'.
-        // Maybe we need a new status or a metadata field.
-        // Let's assume we update status to 'approved' means they are verified at venue? 
-        // Or better, let's add a check_in_time to the model. I'll stick to a simple log update for now 
-        // or just respond success.
+        res.json(registrations);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
-        // Actually, let's just log it and maybe update status to 'approved' if not already.
+// @desc    Toggle student check-in
+// @access  Private (Committee/Admin)
+exports.updateCheckIn = async (req, res) => {
+    try {
+        const registration = await Registration.findByPk(req.params.id);
+        if (!registration) return res.status(404).json({ error: 'Registration not found' });
 
-        console.log(`Student ${registrationId} checked in at ${new Date()}`);
+        registration.checked_in = !registration.checked_in;
+        registration.checkin_time = registration.checked_in ? new Date() : null;
+        await registration.save();
 
-        res.json({ message: 'Check-in successful', time: new Date() });
-
+        res.json({
+            message: `Student ${registration.checked_in ? 'checked in' : 'unchecked'} successfully`,
+            checked_in: registration.checked_in
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

@@ -3,7 +3,10 @@ const router = express.Router();
 const committeeController = require('../controllers/committeeController');
 const { protect, authorize } = require('../middlewares/authMiddleware');
 
-// Only Committee and Admins can check in
-router.post('/check-in/:registrationId', protect, authorize('super_admin', 'committee'), committeeController.checkInStudent);
+router.use(protect);
+router.use(authorize('super_admin', 'committee'));
+
+router.get('/registrations', committeeController.getRegistrations);
+router.patch('/checkin/:id', committeeController.updateCheckIn);
 
 module.exports = router;
