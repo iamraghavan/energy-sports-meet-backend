@@ -2,6 +2,7 @@ const { Registration, Payment, Student, Sport, Team, College, User, Registration
 const { generateRegistrationPDF } = require('../utils/pdf');
 const NotificationService = require('../services/notificationService');
 const { Op } = require('sequelize');
+const bcrypt = require('bcrypt');
 
 // @desc    Verify Payment
 // @access  Private (Admin/Sports Head)
@@ -117,4 +118,82 @@ exports.getAnalytics = async (req, res) => {
 exports.generateMatchReport = async (req, res) => {
     // Technical implementation for global report
     res.json({ message: "Report generation initiated (PDF will be sent to email)" });
+};
+// @desc    Get all registrations
+// @access  Private (Admin)
+exports.getAllRegistrations = async (req, res) => {
+    try {
+        const registrations = await Registration.findAll({
+            include: [
+                { model: Student, include: [College] },
+                { model: Sport },
+                { model: Team },
+                { model: Payment }
+            ],
+            order: [['createdAt', 'DESC']]
+        });
+        res.json(registrations);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// @desc    User Management (Aliases from authController for central admin access)
+exports.getAllUsers = async (req, res) => {
+    try {
+        const users = await User.findAll({
+            attributes: { exclude: ['password'] },
+            order: [['createdAt', 'DESC']]
+        });
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.createUser = async (req, res) => {
+    try {
+        let { name, email, username, password, role, assigned_sport_id } = req.body;
+
+        if (role === 'sports_head' && !assigned_sport_id) {
+            return res.status(400).json({ error: 'Assigned Sport ID is required for Sports Head' });
+        }
+
+        const user = await User.create({ name, email, username, password, role, assigned_sport_id });
+        res.status(201).json({ id: user.id, name: user.name, role: user.role });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.updateUser = async (req, res) => {
+    try {
+        const user = await User.findByPk(req.params.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        user.name = req.body.name || user.name;
+        user.email = req.body.email || user.email;
+        user.role = req.body.role || user.role;
+
+        if (req.body.password) {
+            const salt = await bcrypt.genSalt(10);
+            user.password = await bcrypt.hash(req.body.password, salt);
+        }
+
+        await user.save();
+        res.json({ message: 'User updated successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.deleteUser = async (req, res) => {
+    try {
+        const user = await User.findByPk(req.params.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        await user.destroy();
+        res.json({ message: 'User deleted' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 };

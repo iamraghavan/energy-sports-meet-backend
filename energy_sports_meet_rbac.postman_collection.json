@@ -1,8 +1,8 @@
 {
     "info": {
         "_postman_id": "8923a1-b2c3-d4e5-f6g7-h8i9j0k1l2m3",
-        "name": "Energy Sports Meet 2026 - RBAC API",
-        "description": "Comprehensive API collection for Admin, Committee, Sports Head, and Scorer roles.",
+        "name": "Energy Sports Meet 2026 - RBAC API (Final)",
+        "description": "Comprehensive API collection for Admin, Committee, Sports Head, and Scorer roles, fully audited against Design Spec.",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "item": [
@@ -44,6 +44,32 @@
             "name": "Admin Module",
             "item": [
                 {
+                    "name": "List Users",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/admin/users",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "admin",
+                                "users"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
                     "name": "Create User",
                     "request": {
                         "method": "POST",
@@ -56,7 +82,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"role\": \"scorer\",\n    \"password\": \"password123\"\n}",
+                            "raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"role\": \"scorer\",\n    \"password\": \"password123\",\n    \"username\": \"johndoe\"\n}",
                             "options": {
                                 "raw": {
                                     "language": "json"
@@ -64,15 +90,41 @@
                             }
                         },
                         "url": {
-                            "raw": "{{base_url}}/api/v1/auth/create-user",
+                            "raw": "{{base_url}}/api/v1/admin/users",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "api",
                                 "v1",
-                                "auth",
-                                "create-user"
+                                "admin",
+                                "users"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "List All Registrations",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/admin/registrations",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "admin",
+                                "registrations"
                             ]
                         }
                     },
@@ -105,7 +157,7 @@
                     "response": []
                 },
                 {
-                    "name": "Verify Payment (Approve)",
+                    "name": "Verify Payment",
                     "request": {
                         "method": "POST",
                         "header": [
@@ -117,7 +169,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"registration_code\": \"ESM/2026/001\",\n    \"status\": \"approved\",\n    \"remarks\": \"Payment verified successfully\"\n}",
+                            "raw": "{\n    \"registration_code\": \"ESM/2026/001\",\n    \"status\": \"approved\",\n    \"remarks\": \"Verified via Postman\"\n}",
                             "options": {
                                 "raw": {
                                     "language": "json"
@@ -156,7 +208,7 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/api/v1/committee/registrations?search=John&sport_id=1",
+                            "raw": "{{base_url}}/api/v1/committee/registrations",
                             "host": [
                                 "{{base_url}}"
                             ],
@@ -165,15 +217,38 @@
                                 "v1",
                                 "committee",
                                 "registrations"
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Student Details",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/committee/student/:id",
+                            "host": [
+                                "{{base_url}}"
                             ],
-                            "query": [
+                            "path": [
+                                "api",
+                                "v1",
+                                "committee",
+                                "student",
+                                ":id"
+                            ],
+                            "variable": [
                                 {
-                                    "key": "search",
-                                    "value": "John"
-                                },
-                                {
-                                    "key": "sport_id",
-                                    "value": "1"
+                                    "key": "id",
+                                    "value": "student_uuid_here"
                                 }
                             ]
                         }
@@ -231,7 +306,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"sport_id\": 1,\n    \"team_a_id\": \"team_id_1\",\n    \"team_b_id\": \"team_id_2\",\n    \"start_time\": \"2026-02-14T10:00:00Z\",\n    \"venue\": \"Main Stadium\",\n    \"referee_name\": \"Umpire X\"\n}",
+                            "raw": "{\n    \"sport_id\": 1,\n    \"team_a_id\": \"uuid-1\",\n    \"team_b_id\": \"uuid-2\",\n    \"start_time\": \"2026-02-14T09:00:00Z\",\n    \"venue\": \"Court 1\"\n}",
                             "options": {
                                 "raw": {
                                     "language": "json"
@@ -255,9 +330,9 @@
                     "response": []
                 },
                 {
-                    "name": "List Sport Teams",
+                    "name": "Update Match Details",
                     "request": {
-                        "method": "GET",
+                        "method": "PATCH",
                         "header": [
                             {
                                 "key": "Authorization",
@@ -265,6 +340,57 @@
                                 "type": "text"
                             }
                         ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"venue\": \"Main Stadium (Updated)\",\n    \"start_time\": \"2026-02-14T11:00:00Z\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/sports-head/matches/:id",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "sports-head",
+                                "matches",
+                                ":id"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "id",
+                                    "value": "match_uuid_here"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Team",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"team_name\": \"Titans\",\n    \"sport_id\": 1\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
                         "url": {
                             "raw": "{{base_url}}/api/v1/sports-head/teams",
                             "host": [
@@ -279,6 +405,32 @@
                         }
                     },
                     "response": []
+                },
+                {
+                    "name": "List Sport Registrations",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/sports-head/registrations",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "sports-head",
+                                "registrations"
+                            ]
+                        }
+                    },
+                    "response": []
                 }
             ]
         },
@@ -286,7 +438,50 @@
             "name": "Scorer Module",
             "item": [
                 {
-                    "name": "Update Live Score",
+                    "name": "Start Match",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"status\": \"live\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/scorer/matches/:matchId/start",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "scorer",
+                                "matches",
+                                ":matchId",
+                                "start"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "matchId",
+                                    "value": "match_uuid_here"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Score",
                     "request": {
                         "method": "PATCH",
                         "header": [
@@ -298,7 +493,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"score_details\": {\n        \"team_a_score\": \"120/2\",\n        \"team_b_score\": \"50/5\",\n        \"current_over\": \"15.2\"\n    },\n    \"status\": \"live\"\n}",
+                            "raw": "{\n    \"score_details\": {\n        \"score\": \"2-1\"\n    }\n}",
                             "options": {
                                 "raw": {
                                     "language": "json"
@@ -329,7 +524,7 @@
                     "response": []
                 },
                 {
-                    "name": "Log Match Event",
+                    "name": "End Match",
                     "request": {
                         "method": "POST",
                         "header": [
@@ -341,7 +536,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"type\": \"Goal\",\n    \"commentary\": \"Amazing strike into the top corner by Player 7!\",\n    \"team_id\": \"team_uuid_here\"\n}",
+                            "raw": "{\n    \"status\": \"finished\",\n    \"winner_id\": \"team_uuid_here\"\n}",
                             "options": {
                                 "raw": {
                                     "language": "json"
@@ -349,7 +544,7 @@
                             }
                         },
                         "url": {
-                            "raw": "{{base_url}}/api/v1/scorer/matches/:matchId/event",
+                            "raw": "{{base_url}}/api/v1/scorer/matches/:matchId/end",
                             "host": [
                                 "{{base_url}}"
                             ],
@@ -359,7 +554,7 @@
                                 "scorer",
                                 "matches",
                                 ":matchId",
-                                "event"
+                                "end"
                             ],
                             "variable": [
                                 {
@@ -374,26 +569,6 @@
             ]
         }
     ],
-    "event": [
-        {
-            "listen": "prerequest",
-            "script": {
-                "type": "text/javascript",
-                "exec": [
-                    ""
-                ]
-            }
-        },
-        {
-            "listen": "test",
-            "script": {
-                "type": "text/javascript",
-                "exec": [
-                    ""
-                ]
-            }
-        }
-    ],
     "variable": [
         {
             "key": "base_url",
@@ -402,7 +577,7 @@
         },
         {
             "key": "token",
-            "value": "your_jwt_token_here",
+            "value": "jwt_token_here",
             "type": "string"
         }
     ]

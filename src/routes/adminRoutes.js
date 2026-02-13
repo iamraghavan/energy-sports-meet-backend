@@ -1,7 +1,11 @@
-const express = require('express');
-const router = express.Router();
-const adminController = require('../controllers/adminController');
-const { protect, authorize } = require('../middlewares/authMiddleware');
+// User Management
+router.get('/users', protect, authorize('super_admin'), adminController.getAllUsers);
+router.post('/users', protect, authorize('super_admin'), adminController.createUser);
+router.put('/users/:id', protect, authorize('super_admin'), adminController.updateUser);
+router.delete('/users/:id', protect, authorize('super_admin'), adminController.deleteUser);
+
+// Registrations
+router.get('/registrations', protect, authorize('super_admin'), adminController.getAllRegistrations);
 
 // Verify Payment: accessible by Super Admin and Sports Head
 router.post('/verify-payment', protect, authorize('super_admin', 'sports_head'), adminController.verifyPayment);

@@ -8,5 +8,6 @@ router.use(authorize('super_admin', 'committee'));
 
 router.get('/registrations', committeeController.getRegistrations);
 router.patch('/checkin/:id', committeeController.updateCheckIn);
+router.get('/student/:id', committeeController.getStudentDetails);
 
 module.exports = router;
