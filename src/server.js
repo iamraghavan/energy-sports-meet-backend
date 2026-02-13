@@ -26,22 +26,23 @@ require('./sockets/matchSocket')(io);
 app.set('io', io);
 
 async function startServer() {
+    // 1. Start listening immediately so health checks pass
+    server.listen(PORT, '0.0.0.0', () => {
+        logger.info(`🚀 Server (HTTP + Socket) is running on port ${PORT} (Bound to 0.0.0.0)`);
+    });
+
+    // 2. Connect to Database in background
     try {
         await sequelize.authenticate();
         logger.info('✅ Database connection has been established successfully.');
 
         // Sync (alter: true to add new tables without dropping old ones)
-        // In production, use migrations!
         await sequelize.sync({ alter: true });
         logger.info('✅ Database synchronized successfully.');
-
-        server.listen(PORT, () => {
-            logger.info(`🚀 Server (HTTP + Socket) is running on port ${PORT}`);
-        });
-
     } catch (error) {
-        console.error('SERVER STARTUP ERROR:', error);
-        logger.error('❌ Unable to connect to the database:', error);
+        console.error('DATABASE CONNECTION ERROR:', error.message);
+        logger.error('❌ Unable to connect to the database:', error.message);
+        // We don't exit(1) here because we want the health-check to handle the error status
     }
 }
 

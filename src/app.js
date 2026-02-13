@@ -42,11 +42,15 @@ app.use('/api/v1/teams', require('./routes/teamRoutes'));
 
 // Health Check
 app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'UP', timestamp: new Date() });
+    res.status(200).json({
+        status: 'UP',
+        message: 'Server is running',
+        timestamp: new Date()
+    });
 });
 
 app.get('/', (req, res) => {
-    res.json({ message: 'Welcome to Energy 2026 Inter-College Sports Event Platform API v1' });
+    res.send('running'); // Minimal response for health checks
 });
 
 // Serve Live Dashboard (Overview)
