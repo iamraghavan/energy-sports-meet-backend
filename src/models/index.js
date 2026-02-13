@@ -31,13 +31,16 @@ Team.belongsTo(Student, { foreignKey: 'captain_id', as: 'Captain' });
 Student.hasMany(Registration, { foreignKey: 'student_id' });
 Registration.belongsTo(Student, { foreignKey: 'student_id' });
 
-// Registration <-> Sport (Many-to-Many)
+// Registration <-> Sport (Many-to-Many via RegistrationSport)
 Registration.belongsToMany(Sport, { through: RegistrationSport, foreignKey: 'registration_id' });
 Sport.belongsToMany(Registration, { through: RegistrationSport, foreignKey: 'sport_id' });
 
-// Direct access for join table if needed
+// Direct access for join table
 Registration.hasMany(RegistrationSport, { foreignKey: 'registration_id' });
 RegistrationSport.belongsTo(Registration, { foreignKey: 'registration_id' });
+
+Sport.hasMany(RegistrationSport, { foreignKey: 'sport_id' });
+RegistrationSport.belongsTo(Sport, { foreignKey: 'sport_id' });
 
 // ... (Match Associations etc)
 
