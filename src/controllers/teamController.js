@@ -1,4 +1,4 @@
-const { Team, Sport, Student, Registration, sequelize } = require('../models');
+const { Team, Sport, Student, Registration, College, sequelize } = require('../models');
 
 // Get All Teams
 exports.getAllTeams = async (req, res) => {
