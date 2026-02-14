@@ -12,10 +12,6 @@ const Registration = sequelize.define('Registration', {
         allowNull: false,
         unique: true
     },
-    student_id: {
-        type: DataTypes.UUID,
-        allowNull: true
-    },
     // Student Profile Data
     name: {
         type: DataTypes.STRING,
@@ -106,10 +102,6 @@ const Registration = sequelize.define('Registration', {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
         defaultValue: 0.00
-    },
-    team_id: {
-        type: DataTypes.UUID,
-        allowNull: true
     },
     is_captain: {
         type: DataTypes.BOOLEAN,
