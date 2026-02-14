@@ -42,32 +42,7 @@ exports.registerStudent = async (req, res) => {
 
         t = await sequelize.transaction();
 
-        // 1. Handle Student creation/lookup
-        let student = await Student.findOne({
-            where: {
-                [Op.or]: [{ mobile }, { email }]
-            },
-            transaction: t
-        });
-
-        if (!student) {
-            student = await Student.create({
-                name, email, mobile, whatsapp, city, state
-            }, { transaction: t });
-        } else {
-            // Update existing student details if they've changed or were missing
-            const updates = {};
-            if (name && student.name !== name) updates.name = name;
-            if (whatsapp && student.whatsapp !== whatsapp) updates.whatsapp = whatsapp;
-            if (city && student.city !== city) updates.city = city;
-            if (state && student.state !== state) updates.state = state;
-
-            if (Object.keys(updates).length > 0) {
-                await student.update(updates, { transaction: t });
-            }
-        }
-
-        // 2. Handle College Metadata
+        // 1. Handle College Metadata
         let finalCollegeName = '';
         let finalCollegeId = null;
 
@@ -92,7 +67,7 @@ exports.registerStudent = async (req, res) => {
             }
         } else if (other_college) {
             finalCollegeName = other_college;
-            let [collegeInstance] = await College.findOrCreate({
+            const [collegeInstance] = await College.findOrCreate({
                 where: {
                     name: other_college,
                     city: city || 'Unknown',
@@ -106,13 +81,7 @@ exports.registerStudent = async (req, res) => {
             throw new Error('College name is required.');
         }
 
-        // Link student to college
-        await student.update({
-            college_id: finalCollegeId,
-            other_college: finalCollegeName
-        }, { transaction: t });
-
-        // 3. Sport Validation & Fee Calculation
+        // 2. Sport Validation & Fee Calculation
         const sports = await Sport.findAll({
             where: { id: selected_sport_ids },
             transaction: t
@@ -124,7 +93,7 @@ exports.registerStudent = async (req, res) => {
 
         const totalAmount = sports.reduce((sum, s) => sum + parseFloat(s.amount), 0);
 
-        // 4. Create Registration
+        // 3. Create Registration (Lead-First)
         const currentYear = new Date().getFullYear();
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let randomSuffix = '';
@@ -133,7 +102,15 @@ exports.registerStudent = async (req, res) => {
 
         const registration = await Registration.create({
             registration_code: registrationCode,
-            student_id: student.id,
+            // Student Details saved directly in Registration
+            name,
+            email,
+            mobile,
+            whatsapp,
+            city,
+            state,
+            other_college,
+            // College Info
             college_id: finalCollegeId,
             college_name: finalCollegeName,
             college_city: city,
@@ -144,25 +121,12 @@ exports.registerStudent = async (req, res) => {
             college_contact,
             total_amount: totalAmount,
             accommodation_needed: accommodation_needed === 'true' || accommodation_needed === true,
+            is_captain: true, // Lead is the captain
             payment_status: 'pending',
             status: 'pending'
         }, { transaction: t });
 
-        // 5. Team Creation (Optional)
-        let finalTeamId = null;
-        if ((create_team === 'true' || create_team === true) && team_name) {
-            const teamSport = sports.find(s => s.type === 'Team');
-            if (teamSport) {
-                const team = await Team.create({
-                    team_name,
-                    sport_id: teamSport.id,
-                    captain_id: student.id,
-                    locked: false
-                }, { transaction: t });
-                finalTeamId = team.id;
-                await registration.update({ team_id: finalTeamId, is_captain: true }, { transaction: t });
-            }
-        }
+        // Skip Team creation as per request.
 
         // 6. Link Sports via Join Table
         const registrationSportsData = selected_sport_ids.map(sid => ({

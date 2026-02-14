@@ -6,6 +6,7 @@ const Team = require('./Team');
 const Registration = require('./Registration');
 const Payment = require('./Payment');
 const User = require('./User');
+const TeamMember = require('./TeamMember');
 
 const Match = require('./Match');
 const MatchPlayer = require('./MatchPlayer');
@@ -25,13 +26,25 @@ Registration.belongsTo(College, { foreignKey: 'college_id' });
 Sport.hasMany(Team, { foreignKey: 'sport_id' });
 Team.belongsTo(Sport, { foreignKey: 'sport_id' });
 
-// Team - Student (Captain)
-Student.hasMany(Team, { foreignKey: 'captain_id' });
-Team.belongsTo(Student, { foreignKey: 'captain_id', as: 'Captain' });
+// Team - College
+College.hasMany(Team, { foreignKey: 'college_id' });
+Team.belongsTo(College, { foreignKey: 'college_id' });
 
-// Registration - Student
-Student.hasMany(Registration, { foreignKey: 'student_id' });
-Registration.belongsTo(Student, { foreignKey: 'student_id' });
+// Team - Registration (owner)
+Registration.hasMany(Team, { foreignKey: 'registration_id', as: 'Teams' });
+Team.belongsTo(Registration, { foreignKey: 'registration_id' });
+
+// Team - TeamMember
+Team.hasMany(TeamMember, { foreignKey: 'team_id', as: 'Members' });
+TeamMember.belongsTo(Team, { foreignKey: 'team_id' });
+
+// TeamMember - Student
+Student.hasMany(TeamMember, { foreignKey: 'student_id' });
+TeamMember.belongsTo(Student, { foreignKey: 'student_id' });
+
+// Team - Student (Captain)
+Student.hasMany(Team, { foreignKey: 'captain_id', as: 'CaptainTeams' });
+Team.belongsTo(Student, { foreignKey: 'captain_id', as: 'Captain' });
 
 // Registration <-> Sport (Many-to-Many via RegistrationSport)
 Registration.belongsToMany(Sport, { through: RegistrationSport, foreignKey: 'registration_id' });
@@ -43,12 +56,6 @@ RegistrationSport.belongsTo(Registration, { foreignKey: 'registration_id' });
 
 Sport.hasMany(RegistrationSport, { foreignKey: 'sport_id' });
 RegistrationSport.belongsTo(Sport, { foreignKey: 'sport_id' });
-
-// ... (Match Associations etc)
-
-// Registration - Team
-Team.hasMany(Registration, { foreignKey: 'team_id' });
-Registration.belongsTo(Team, { foreignKey: 'team_id' });
 
 // Payment - Registration
 Registration.hasOne(Payment, { foreignKey: 'registration_id' });
@@ -79,6 +86,7 @@ module.exports = {
     Registration,
     Payment,
     User,
+    TeamMember,
     Match,
     MatchPlayer,
     RegistrationSport

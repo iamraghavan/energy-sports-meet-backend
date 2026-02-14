@@ -1,18 +1,18 @@
-const { Student } = require('../models');
+const { Registration, Sport, Team } = require('../models');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const { sendWhatsApp } = require('../utils/whatsapp');
 const { sendEmail } = require('../utils/email');
 
-// Generate JWT for Student
-const generateStudentToken = (id) => {
-    return jwt.sign({ id, type: 'student' }, process.env.JWT_SECRET, {
+// Generate JWT for Student (using Registration ID/Registration Code)
+const generateStudentToken = (id, type = 'student') => {
+    return jwt.sign({ id, type }, process.env.JWT_SECRET, {
         expiresIn: '30d',
     });
 };
 
 /**
- * @desc    Request OTP for Login/Register
+ * @desc    Request OTP for Login/Register (Lead-First)
  * @route   POST /api/v1/auth/student/request-otp
  * @access  Public
  */
@@ -28,21 +28,23 @@ exports.requestOTP = async (req, res) => {
         const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
         const otp_expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-        let student = await Student.findOne({
-            where: isEmail ? { email: identifier } : { mobile: identifier }
+        // Find the LATEST registration for this identifier
+        let registration = await Registration.findOne({
+            where: isEmail ? { email: identifier } : { mobile: identifier },
+            order: [['createdAt', 'DESC']]
         });
 
-        if (!student) {
+        if (!registration) {
             return res.status(404).json({
                 error: 'Registration not found. Please register first to access your account.',
                 needsRegistration: true
             });
         }
 
-        // Update OTP
-        student.otp = otp;
-        student.otp_expiry = otp_expiry;
-        await student.save();
+        // Update OTP in the registration record
+        registration.otp = otp;
+        registration.otp_expiry = otp_expiry;
+        await registration.save();
 
         // Send OTP
         if (isEmail) {
@@ -90,7 +92,7 @@ exports.requestOTP = async (req, res) => {
 };
 
 /**
- * @desc    Verify OTP and Login/Register
+ * @desc    Verify OTP and Login
  * @route   POST /api/v1/auth/student/verify-otp
  * @access  Public
  */
@@ -103,29 +105,39 @@ exports.verifyOTP = async (req, res) => {
         }
 
         const isEmail = identifier.includes('@');
-        const student = await Student.findOne({
-            where: isEmail ? { email: identifier } : { mobile: identifier }
+        const registration = await Registration.findOne({
+            where: isEmail ? { email: identifier } : { mobile: identifier },
+            include: [
+                {
+                    model: Sport,
+                    through: { attributes: [] }
+                },
+                {
+                    model: Team,
+                    as: 'Teams' // Re-check association in models/index.js if needed. It was Registration.hasMany(Team, { foreignKey: 'registration_id' })
+                }
+            ],
+            order: [['createdAt', 'DESC']]
         });
 
-        if (!student || student.otp !== otp || new Date() > student.otp_expiry) {
+        if (!registration || registration.otp !== otp || new Date() > registration.otp_expiry) {
             return res.status(401).json({ error: 'Invalid or expired OTP' });
         }
 
         // Clear OTP after successful verify
-        student.otp = null;
-        student.otp_expiry = null;
-        await student.save();
+        registration.otp = null;
+        registration.otp_expiry = null;
+        await registration.save();
 
-        // Check if registration is complete (has name and city)
-        const isNewUser = student.name === 'Pending Registration';
+        // Convert to JSON and remove sensitive fields
+        const userData = registration.toJSON();
+        delete userData.otp;
+        delete userData.otp_expiry;
 
         res.json({
-            id: student.id,
-            name: student.name,
-            email: student.email,
-            mobile: student.mobile,
-            isNewUser,
-            token: generateStudentToken(student.id)
+            ...userData,
+            isNewUser: false,
+            token: generateStudentToken(registration.id)
         });
     } catch (error) {
         res.status(500).json({ error: error.message });

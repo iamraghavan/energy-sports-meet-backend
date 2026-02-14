@@ -57,10 +57,11 @@ exports.protectStudent = async (req, res, next) => {
                 return res.status(401).json({ error: 'Not authorized as student' });
             }
 
-            req.student = await Student.findByPk(decoded.id);
+            // In Lead-First flow, the "Student" is actually a Registration record
+            req.student = await Registration.findByPk(decoded.id);
 
             if (!req.student) {
-                return res.status(401).json({ error: 'Student not found' });
+                return res.status(401).json({ error: 'Registration record not found' });
             }
 
             next();

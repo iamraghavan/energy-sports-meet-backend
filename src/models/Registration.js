@@ -14,11 +14,65 @@ const Registration = sequelize.define('Registration', {
     },
     student_id: {
         type: DataTypes.UUID,
-        allowNull: true // Optional if PD is registering only college details first
+        allowNull: true
+    },
+    // Student Profile Data
+    name: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    dob: {
+        type: DataTypes.DATEONLY,
+        allowNull: true
+    },
+    gender: {
+        type: DataTypes.ENUM('Male', 'Female', 'Other'),
+        allowNull: true
+    },
+    email: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    mobile: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    whatsapp: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    city: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    state: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    department: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    year_of_study: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    other_college: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    // Authentication Fields
+    otp: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    otp_expiry: {
+        type: DataTypes.DATE,
+        allowNull: true
     },
     college_id: {
         type: DataTypes.INTEGER,
-        allowNull: true // references Colleges table
+        allowNull: true
     },
     college_name: {
         type: DataTypes.STRING,

@@ -11,13 +11,21 @@ const Team = sequelize.define('Team', {
         type: DataTypes.INTEGER,
         allowNull: false
     },
+    registration_id: {
+        type: DataTypes.UUID,
+        allowNull: false // Linked to the purchase/entry
+    },
+    college_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
     team_name: {
         type: DataTypes.STRING,
         allowNull: false
     },
     captain_id: {
         type: DataTypes.UUID,
-        allowNull: false
+        allowNull: true // Assigned later when adding members
     },
     locked: {
         type: DataTypes.BOOLEAN,
