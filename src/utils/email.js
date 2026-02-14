@@ -1,20 +1,25 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
+console.log('--- Initializing Email Utility ---');
+console.log('SMTP Host:', process.env.SMTP_HOST || 'NOT SET');
+console.log('SMTP Port:', process.env.SMTP_PORT || '587');
+
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // Let nodemailer handle the complex Gmail settings
-    pool: true,      // Use connection pooling for better reliability
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT) || 587,
+    secure: process.env.SMTP_SECURE === 'true', // Use STARTTLS for 587
+    pool: true,
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
     },
     // Increase timeouts to prevent "Connection timeout" on slow networks
-    connectionTimeout: 30000, // 30 seconds
+    connectionTimeout: 30000,
     greetingTimeout: 30000,
     socketTimeout: 60000,
-    // Force IPv4 fallback just in case
+    // CRITICAL: Force IPv4 to prevent ENETUNREACH/IPv6 errors on some servers
     family: 4,
-    // Deliverability Headers
     headers: {
         'X-Entity-Ref-ID': 'energy-sports-meet-2026',
         'Precedence': 'bulk',
@@ -31,7 +36,7 @@ exports.sendEmail = async ({ to, subject, text, html, attachments = [] }) => {
         const mailOptions = {
             from: {
                 name: 'Energy Sports Meet 2026',
-                address: process.env.SMTP_USER
+                address: process.env.SMTP_FROM || process.env.SMTP_USER
             },
             to,
             subject,
