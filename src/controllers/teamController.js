@@ -6,7 +6,12 @@ exports.getAllTeams = async (req, res) => {
         const teams = await Team.findAll({
             include: [
                 { model: Sport, attributes: ['id', 'name', 'category', 'type'] },
-                { model: Student, as: 'Captain', attributes: ['name', 'email'] }
+                {
+                    model: Student,
+                    as: 'Captain',
+                    attributes: ['name', 'email'],
+                    include: [{ model: College, attributes: ['name', 'city'] }]
+                }
             ]
         });
         res.json(teams);
@@ -22,7 +27,12 @@ exports.getTeamById = async (req, res) => {
         const team = await Team.findByPk(id, {
             include: [
                 { model: Sport, attributes: ['id', 'name', 'category'] },
-                { model: Student, as: 'Captain', attributes: ['name', 'mobile'] }
+                {
+                    model: Student,
+                    as: 'Captain',
+                    attributes: ['name', 'mobile'],
+                    include: [{ model: College, attributes: ['name', 'city'] }]
+                }
             ]
         });
 
@@ -32,7 +42,13 @@ exports.getTeamById = async (req, res) => {
         // Assuming Registration has team_id
         const members = await Registration.findAll({
             where: { team_id: id },
-            include: [{ model: Student, attributes: ['id', 'name', 'department', 'year_of_study'] }]
+            include: [
+                {
+                    model: Student,
+                    attributes: ['id', 'name', 'department', 'year_of_study'],
+                    include: [{ model: College, attributes: ['name', 'city'] }]
+                }
+            ]
         });
 
         res.json({ ...team.toJSON(), members });
@@ -51,12 +67,16 @@ exports.getTeamsBySport = async (req, res) => {
             where: { sport_id: sportId },
             include: [
                 { model: Sport, attributes: ['id', 'name', 'category'] },
-                { model: Student, as: 'Captain', attributes: ['name'] }
+                {
+                    model: Student,
+                    as: 'Captain',
+                    attributes: ['name'],
+                    include: [{ model: College, attributes: ['name', 'city'] }]
+                }
             ]
         });
 
         // 2. If no teams found, fallback to showing all registrations for this sport
-        // This ensures the public view is not empty if registrations exist
         if (teams.length === 0) {
             const registrations = await Registration.findAll({
                 include: [
@@ -65,7 +85,11 @@ exports.getTeamsBySport = async (req, res) => {
                         where: { id: sportId },
                         attributes: ['id', 'name', 'category']
                     },
-                    { model: Student, attributes: ['name'] }
+                    {
+                        model: Student,
+                        attributes: ['name'],
+                        include: [{ model: College, attributes: ['name', 'city'] }]
+                    }
                 ],
                 order: [['created_at', 'ASC']]
             });
@@ -74,6 +98,7 @@ exports.getTeamsBySport = async (req, res) => {
             teams = registrations.map(reg => ({
                 id: reg.id,
                 team_name: reg.college_name || reg.Student?.name || 'Independent Player',
+                college_info: reg.Student?.College,
                 sport_id: sportId,
                 captain_id: reg.student_id,
                 locked: false,
