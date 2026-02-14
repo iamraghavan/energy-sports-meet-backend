@@ -58,6 +58,18 @@ app.get('/', (req, res) => {
     res.send('running'); // Minimal response for health checks
 });
 
+// TEMPORARY: Debug Email Config (Safe Masking)
+app.get('/api/debug-email-config', (req, res) => {
+    res.json({
+        host: process.env.SMTP_HOST,
+        port: process.env.SMTP_PORT,
+        user: process.env.SMTP_USER ? `${process.env.SMTP_USER.substring(0, 4)}***` : 'NOT SET',
+        from: process.env.SMTP_FROM,
+        secure: process.env.SMTP_SECURE,
+        node_env: process.env.NODE_ENV
+    });
+});
+
 // Serve Live Dashboard (Overview)
 app.get('/dashboard', (req, res) => {
     res.sendFile(require('path').join(__dirname, '../test_socket_overview.html'));

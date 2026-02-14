@@ -8,8 +8,8 @@ async function testEmail() {
 
     const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
-        port: 587,
-        secure: false, // STARTTLS
+        port: 465,
+        secure: true, // SMTPS
         auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS,
