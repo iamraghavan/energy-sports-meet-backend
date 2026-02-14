@@ -41,26 +41,49 @@ exports.registerStudent = async (req, res) => {
         let finalCollegeName = '';
         let finalCity = city;
         let finalState = state;
+        let finalCollegeId = null;
 
         if (college_id && college_id !== 'other' && college_id !== '') {
             const college = await College.findByPk(college_id, { transaction: t });
             if (college) {
+                finalCollegeId = college.id;
                 finalCollegeName = college.name;
                 finalCity = college.city || city;
                 finalState = college.state || state;
 
-                // Update college PD info if provided
-                await college.update({
-                    college_contact,
-                    college_email,
-                    pd_name,
-                    pd_whatsapp
-                }, { transaction: t });
+                // Update college PD info if provided (optional)
+                const collegeUpdates = {};
+                if (college_contact) collegeUpdates.college_contact = college_contact;
+                if (college_email) collegeUpdates.college_email = college_email;
+                if (pd_name) collegeUpdates.pd_name = pd_name;
+                if (pd_whatsapp) collegeUpdates.pd_whatsapp = pd_whatsapp;
+
+                if (Object.keys(collegeUpdates).length > 0) {
+                    await college.update(collegeUpdates, { transaction: t });
+                }
             } else {
                 throw new Error('Selected college not found.');
             }
         } else if (other_college) {
             finalCollegeName = other_college;
+            // Search for or create this college in the Colleges table
+            let [collegeInstance] = await College.findOrCreate({
+                where: {
+                    name: other_college,
+                    city: city || 'Unknown',
+                    state: state || 'Unknown'
+                },
+                defaults: {
+                    college_contact,
+                    college_email,
+                    pd_name,
+                    pd_whatsapp
+                },
+                transaction: t
+            });
+            finalCollegeId = collegeInstance.id;
+            finalCity = collegeInstance.city;
+            finalState = collegeInstance.state;
         } else {
             throw new Error('College name is required.');
         }
@@ -70,8 +93,14 @@ exports.registerStudent = async (req, res) => {
         if (!student) {
             student = await Student.create({
                 name, email, mobile, whatsapp, city: finalCity, state: finalState,
+                college_id: finalCollegeId,
                 other_college: finalCollegeName
             }, { transaction: t });
+        } else {
+            // Update student's college link if it was missing
+            if (!student.college_id) {
+                await student.update({ college_id: finalCollegeId, other_college: finalCollegeName }, { transaction: t });
+            }
         }
 
         // 3. Sport Validation & Fee Calculation
@@ -96,6 +125,7 @@ exports.registerStudent = async (req, res) => {
         const registration = await Registration.create({
             registration_code: registrationCode,
             student_id: student.id,
+            college_id: finalCollegeId,
             college_name: finalCollegeName,
             college_city: finalCity,
             college_state: finalState,

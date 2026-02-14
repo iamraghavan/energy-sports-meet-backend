@@ -16,6 +16,10 @@ const Registration = sequelize.define('Registration', {
         type: DataTypes.UUID,
         allowNull: true // Optional if PD is registering only college details first
     },
+    college_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true // references Colleges table
+    },
     college_name: {
         type: DataTypes.STRING,
         allowNull: false
