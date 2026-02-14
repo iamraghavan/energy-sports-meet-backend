@@ -30,8 +30,11 @@ app.use(limiter);
 const collegeRoutes = require('./routes/collegeRoutes');
 const sportRoutes = require('./routes/sportRoutes');
 const registrationRoutes = require('./routes/registrationRoutes');
+const studentAuthRoutes = require('./routes/studentAuthRoutes'); // Added studentAuthRoutes
+const authRoutes = require('./routes/authRoutes'); // Imported authRoutes as a variable
 
-app.use('/api/v1/auth', require('./routes/authRoutes'));
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/auth/student', studentAuthRoutes);
 app.use('/api/v1/colleges', collegeRoutes);
 app.use('/api/v1/sports', sportRoutes);
 app.use('/api/v1/register', registrationRoutes);

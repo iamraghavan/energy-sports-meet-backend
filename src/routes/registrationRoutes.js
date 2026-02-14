@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 const registrationController = require('../controllers/registrationController');
 const upload = require('../middlewares/uploadMiddleware');
-const { protect, authorize } = require('../middlewares/authMiddleware');
+const { protect, authorize, protectStudent } = require('../middlewares/authMiddleware');
 
+// Public Registration
 // Public Registration
 router.post('/', upload.single('screenshot'), registrationController.registerStudent);
 

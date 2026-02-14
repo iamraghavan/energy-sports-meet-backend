@@ -59,6 +59,14 @@ const Student = sequelize.define('Student', {
     year_of_study: {
         type: DataTypes.STRING,
         allowNull: true
+    },
+    otp: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    otp_expiry: {
+        type: DataTypes.DATE,
+        allowNull: true
     }
 }, {
     timestamps: true,

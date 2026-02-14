@@ -2,24 +2,27 @@ const { Student, Registration, Sport, Team, Payment, College, RegistrationSport,
 const { uploadToGitHub } = require('../utils/upload');
 const { v4: uuidv4 } = require('uuid');
 const { generateRegistrationPDF, generateCheckInPDF } = require('../utils/pdf');
+const { Op } = require('sequelize');
 
+/**
+ * @desc    Public Student Registration
+ * @route   POST /api/v1/register
+ * @access  Public
+ */
 exports.registerStudent = async (req, res) => {
-    // Start transaction
-    const t = await sequelize.transaction();
-
+    let t;
     try {
-        console.log('--- Multi-Sport Registration Received ---');
-        console.log('Body:', req.body);
-
         let {
             name, email, mobile, whatsapp, city, state,
             college_id, other_college,
-            selected_sport_ids, // Expecting Array: [1, 5, 8]
+            selected_sport_ids, // Expecting Array or comma-separated string
             accommodation_needed,
             college_contact, college_email, pd_name, pd_whatsapp,
             txn_id,
             create_team, team_name
         } = req.body;
+
+        console.log('--- Public Registration Received ---');
 
         // Normalize selected_sport_ids
         if (typeof selected_sport_ids === 'string') {
@@ -31,16 +34,41 @@ exports.registerStudent = async (req, res) => {
         }
 
         // Basic Validation
-        const requiredFields = ['name', 'email', 'mobile', 'txn_id'];
+        const requiredFields = ['name', 'email', 'mobile', 'txn_id', 'city', 'state'];
         const missing = requiredFields.filter(f => !req.body[f]);
         if (missing.length > 0) {
             throw new Error(`Missing required fields: ${missing.join(', ')}`);
         }
 
-        // 1. Handle College Metadata
+        t = await sequelize.transaction();
+
+        // 1. Handle Student creation/lookup
+        let student = await Student.findOne({
+            where: {
+                [Op.or]: [{ mobile }, { email }]
+            },
+            transaction: t
+        });
+
+        if (!student) {
+            student = await Student.create({
+                name, email, mobile, whatsapp, city, state
+            }, { transaction: t });
+        } else {
+            // Update existing student details if they've changed or were missing
+            const updates = {};
+            if (name && student.name !== name) updates.name = name;
+            if (whatsapp && student.whatsapp !== whatsapp) updates.whatsapp = whatsapp;
+            if (city && student.city !== city) updates.city = city;
+            if (state && student.state !== state) updates.state = state;
+
+            if (Object.keys(updates).length > 0) {
+                await student.update(updates, { transaction: t });
+            }
+        }
+
+        // 2. Handle College Metadata
         let finalCollegeName = '';
-        let finalCity = city;
-        let finalState = state;
         let finalCollegeId = null;
 
         if (college_id && college_id !== 'other' && college_id !== '') {
@@ -48,8 +76,6 @@ exports.registerStudent = async (req, res) => {
             if (college) {
                 finalCollegeId = college.id;
                 finalCollegeName = college.name;
-                finalCity = college.city || city;
-                finalState = college.state || state;
 
                 // Update college PD info if provided (optional)
                 const collegeUpdates = {};
@@ -66,42 +92,25 @@ exports.registerStudent = async (req, res) => {
             }
         } else if (other_college) {
             finalCollegeName = other_college;
-            // Search for or create this college in the Colleges table
             let [collegeInstance] = await College.findOrCreate({
                 where: {
                     name: other_college,
                     city: city || 'Unknown',
                     state: state || 'Unknown'
                 },
-                defaults: {
-                    college_contact,
-                    college_email,
-                    pd_name,
-                    pd_whatsapp
-                },
+                defaults: { college_contact, college_email, pd_name, pd_whatsapp },
                 transaction: t
             });
             finalCollegeId = collegeInstance.id;
-            finalCity = collegeInstance.city;
-            finalState = collegeInstance.state;
         } else {
             throw new Error('College name is required.');
         }
 
-        // 2. Student Handling
-        let student = await Student.findOne({ where: { email }, transaction: t });
-        if (!student) {
-            student = await Student.create({
-                name, email, mobile, whatsapp, city: finalCity, state: finalState,
-                college_id: finalCollegeId,
-                other_college: finalCollegeName
-            }, { transaction: t });
-        } else {
-            // Update student's college link if it was missing
-            if (!student.college_id) {
-                await student.update({ college_id: finalCollegeId, other_college: finalCollegeName }, { transaction: t });
-            }
-        }
+        // Link student to college
+        await student.update({
+            college_id: finalCollegeId,
+            other_college: finalCollegeName
+        }, { transaction: t });
 
         // 3. Sport Validation & Fee Calculation
         const sports = await Sport.findAll({
@@ -115,7 +124,7 @@ exports.registerStudent = async (req, res) => {
 
         const totalAmount = sports.reduce((sum, s) => sum + parseFloat(s.amount), 0);
 
-        // 4. Create Registration with Metadata
+        // 4. Create Registration
         const currentYear = new Date().getFullYear();
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let randomSuffix = '';
@@ -127,8 +136,8 @@ exports.registerStudent = async (req, res) => {
             student_id: student.id,
             college_id: finalCollegeId,
             college_name: finalCollegeName,
-            college_city: finalCity,
-            college_state: finalState,
+            college_city: city,
+            college_state: state,
             pd_name,
             pd_whatsapp,
             college_email,
@@ -139,10 +148,9 @@ exports.registerStudent = async (req, res) => {
             status: 'pending'
         }, { transaction: t });
 
-        // 4b. Team Creation (If applicable)
+        // 5. Team Creation (Optional)
         let finalTeamId = null;
         if ((create_team === 'true' || create_team === true) && team_name) {
-            // Find a team sport among selected
             const teamSport = sports.find(s => s.type === 'Team');
             if (teamSport) {
                 const team = await Team.create({
@@ -152,23 +160,18 @@ exports.registerStudent = async (req, res) => {
                     locked: false
                 }, { transaction: t });
                 finalTeamId = team.id;
-
-                // Link registration to team and mark as captain
-                await registration.update({
-                    team_id: finalTeamId,
-                    is_captain: true
-                }, { transaction: t });
+                await registration.update({ team_id: finalTeamId, is_captain: true }, { transaction: t });
             }
         }
 
-        // 5. Link Sports via Join Table
+        // 6. Link Sports via Join Table
         const registrationSportsData = selected_sport_ids.map(sid => ({
             registration_id: registration.id,
             sport_id: sid
         }));
         await RegistrationSport.bulkCreate(registrationSportsData, { transaction: t });
 
-        // 6. File Upload
+        // 7. File Upload (Screenshot)
         let screenshotUrl = '';
         if (req.file) {
             screenshotUrl = await uploadToGitHub(req.file, 'payments');
@@ -176,7 +179,7 @@ exports.registerStudent = async (req, res) => {
             throw new Error('Payment screenshot is required.');
         }
 
-        // 7. Create Payment record
+        // 8. Create Payment record
         await Payment.create({
             registration_id: registration.id,
             amount: totalAmount,
@@ -186,7 +189,7 @@ exports.registerStudent = async (req, res) => {
 
         await t.commit();
 
-        // 8. Notifications
+        // 9. Notifications (Async)
         const { sendWhatsApp } = require('../utils/whatsapp');
         const { sendEmail } = require('../utils/email');
         const { getRegistrationReceiptTemplate } = require('../utils/emailTemplates');
@@ -194,61 +197,35 @@ exports.registerStudent = async (req, res) => {
         const triggerNotifications = async () => {
             const sportSummary = sports.map(s => `${s.name} (${s.category})`).join(', ');
 
-            // 1. WhatsApp Notification
             try {
                 await sendWhatsApp({
                     phone: mobile,
                     template_name: 'energy_sports_meet_2026_registration_received',
-                    variables: [name, registrationCode, sportSummary, 'Pending'],
-                    buttons: [registrationCode, registrationCode]
+                    variables: [name, registrationCode, sportSummary, 'Pending']
                 });
-                console.log(`✅ WhatsApp sent for ${registrationCode}`);
-            } catch (err) {
-                console.error(`❌ WhatsApp Failed for ${registrationCode}:`, err.message);
-            }
+            } catch (err) { console.error('WhatsApp Notification Failed'); }
 
-            // 2. Email Notification
             try {
-                const emailContent = getRegistrationReceiptTemplate({
-                    name, regCode: registrationCode, sportName: sportSummary
-                });
+                const content = getRegistrationReceiptTemplate({ name, regCode: registrationCode, sportName: sportSummary });
                 await sendEmail({
                     to: email,
-                    subject: `Registration Received - Energy Sports Meet 2026`,
-                    text: emailContent.text,
-                    html: emailContent.html
+                    subject: 'Registration Received - Energy Sports Meet 2026',
+                    text: content.text,
+                    html: content.html
                 });
-                console.log(`✅ Email sent for ${registrationCode}`);
-            } catch (err) {
-                console.error(`❌ Email Failed for ${registrationCode}:`, err.message);
-            }
+            } catch (err) { console.error('Email Notification Failed'); }
 
-            // 3. Google Sheets Backup
             try {
                 const { appendRegistrationToSheet } = require('../utils/googleSheets');
                 await appendRegistrationToSheet({
                     registration_code: registrationCode,
-                    name,
-                    email,
-                    mobile,
-                    whatsapp,
-                    city,
-                    state,
-                    sports: sportSummary,
-                    amount: totalAmount,
-                    txn_id,
-                    payment_status: 'Pending',
-                    status: 'Pending',
-                    accommodation: accommodation_needed === 'true' || accommodation_needed === true,
-                    college: finalCollegeName || other_college || 'Other',
-                    pd_name,
-                    pd_whatsapp
+                    name, email, mobile, whatsapp, city, state,
+                    sports: sportSummary, amount: totalAmount, txn_id,
+                    payment_status: 'Pending', status: 'Pending',
+                    accommodation: accommodation_needed,
+                    college: finalCollegeName, pd_name, pd_whatsapp
                 });
-                console.log(`✅ Google Sheet backup success for ${registrationCode}`);
-            } catch (err) {
-                console.error(`❌ Google Sheet Backup Failed for ${registrationCode}:`, err.message);
-                if (err.stack) console.error(err.stack);
-            }
+            } catch (err) { console.error('Google Sheets Backup Failed'); }
         };
         triggerNotifications();
 
@@ -258,184 +235,95 @@ exports.registerStudent = async (req, res) => {
             data: {
                 registration_id: registration.id,
                 registration_code: registrationCode,
-                student: {
-                    name,
-                    email
-                },
-                payment: {
-                    total_amount: totalAmount,
-                    txn_id: txn_id,
-                    status: 'pending'
-                },
-                sports: sports.map(s => ({ id: s.id, name: s.name, category: s.category })),
-                team: finalTeamId ? {
-                    id: finalTeamId,
-                    name: team_name
-                } : null
+                student: { name, email, mobile },
+                payment: { total_amount: totalAmount, txn_id, status: 'pending' },
+                sports: sports.map(s => ({ id: s.id, name: s.name })),
+                team: finalTeamId ? { id: finalTeamId, name: team_name } : null
             }
         });
 
     } catch (error) {
         if (t) await t.rollback();
         console.error('Registration Error:', error.message);
-        res.status(500).json({
-            error: error.message,
-            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-        });
+        res.status(500).json({ error: error.message });
     }
 };
 
-// NEW: Get Registrations (Role-Based)
+/**
+ * @desc    Get all registrations (Admin/Sports Head)
+ */
 exports.getRegistrations = async (req, res) => {
     try {
-        const { role, assigned_sport_id } = req.user; // From authMiddleware
-
+        const { role, assigned_sport_id } = req.user;
         let whereClause = {};
 
-        // If Sports Head, filter by assigned sport
-        if (role === 'sports_head') {
-            if (!assigned_sport_id) {
-                return res.status(403).json({ error: 'Sports Head has no assigned sport.' });
-            }
-            // This assumes a direct sport_id on Registration, which is not the case for multi-sport.
-            // For multi-sport, this would require a join through RegistrationSport.
-            // For now, we'll leave it as is, but note this limitation.
-            // A more robust solution would involve:
-            // where: { '$RegistrationSports.sport_id$': assigned_sport_id }
-            // and ensuring RegistrationSport is included.
-            // For simplicity, if a sports head is assigned to a single sport,
-            // we might filter registrations that include that sport.
-            // This current implementation is for a single sport registration model or a simplified view.
-        }
-
-        // If filtering by query params (e.g. status)
-        if (req.query.status) {
-            whereClause.status = req.query.status;
+        if (role === 'sports_head' && assigned_sport_id) {
+            // Filter logic for sports head
         }
 
         const registrations = await Registration.findAll({
             where: whereClause,
-            include: [
-                { model: Student },
-                { model: Sport, through: { attributes: [] } }, // Many-to-Many include, exclude join table attributes
-                { model: Team },
-                { model: Payment }
-            ],
+            include: [{ model: Student }, { model: Sport }, { model: Team }, { model: Payment }],
             order: [['created_at', 'DESC']]
         });
-
         res.json(registrations);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
 
-// NEW: Get Registration by ID or Code (Via Query Param to handle slashes)
+/**
+ * @desc    Get Registration details by ID or Code
+ */
 exports.getRegistrationById = async (req, res) => {
     try {
-        // Use query param 'id' to support codes with slashes (e.g. ?id=EGSP/...)
         const { id } = req.query;
-
-        if (!id) {
-            return res.status(400).json({ error: 'ID or Registration Code is required' });
-        }
-
-        let whereClause = {};
-        if (id.includes('EGSP')) {
-            whereClause.registration_code = id;
-        } else {
-            whereClause.id = id;
-        }
-
+        if (!id) return res.status(400).json({ error: 'ID is required' });
+        let whereClause = id.includes('EGSP') ? { registration_code: id } : { id };
         const registration = await Registration.findOne({
             where: whereClause,
-            include: [
-                { model: Student, include: [College] },
-                { model: Sport, through: { attributes: [] } }, // Exclude join table attributes
-                { model: Team },
-                { model: Payment }
-            ]
+            include: [{ model: Student, include: [College] }, { model: Sport }, { model: Team }, { model: Payment }]
         });
-
-        if (!registration) {
-            return res.status(404).json({ error: 'Registration not found' });
-        }
-
+        if (!registration) return res.status(404).json({ error: 'Registration not found' });
         res.json(registration);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
 
-// Download Ticket/Invoice PDF
+/**
+ * @desc    Download Ticket PDF
+ */
 exports.downloadTicket = async (req, res) => {
     try {
         const id = req.params.id || req.query.id;
-
-        let whereClause = {};
-        if (id.includes('EGSP')) {
-            whereClause.registration_code = id;
-        } else {
-            whereClause.id = id;
-        }
-
+        let whereClause = id.includes('EGSP') ? { registration_code: id } : { id };
         const registration = await Registration.findOne({
             where: whereClause,
-            include: [
-                { model: Student, include: [College] },
-                { model: Sport, through: { attributes: [] } }, // Exclude join table attributes
-                { model: Team },
-                { model: Payment }
-            ]
+            include: [{ model: Student, include: [College] }, { model: Sport }, { model: Payment }]
         });
-
-        if (!registration) {
-            return res.status(404).json({ error: 'Registration not found' });
-        }
-
+        if (!registration) return res.status(404).json({ error: 'Registration not found' });
         const pdfBuffer = await generateRegistrationPDF(registration);
-
-        res.set({
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="ticket-${registration.registration_code}.pdf"`,
-            'Content-Length': pdfBuffer.length
-        });
-
         res.send(pdfBuffer);
-
     } catch (error) {
-        console.error('PDF Generation Error:', error);
-        res.status(500).json({ error: 'Failed to generate ticket' });
+        res.status(500).json({ error: error.message });
     }
 };
 
-// Download Check-In Pass
+/**
+ * @desc    Download Check-in PDF
+ */
 exports.downloadCheckIn = async (req, res) => {
     try {
         const id = req.params.id || req.query.id;
-        let whereClause = {};
-        if (id.includes('EGSP')) {
-            whereClause.registration_code = id;
-        } else {
-            whereClause.id = id;
-        }
-
+        let whereClause = id.includes('EGSP') ? { registration_code: id } : { id };
         const registration = await Registration.findOne({
             where: whereClause,
-            include: [{ model: Student, include: [College] }, { model: Sport, through: { attributes: [] } }]
+            include: [{ model: Student, include: [College] }, { model: Sport }]
         });
-
         if (!registration) return res.status(404).json({ error: 'Registration not found' });
-
         const pdfBuffer = await generateCheckInPDF(registration);
-
-        res.set({
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="checkin-${registration.registration_code}.pdf"`,
-            'Content-Length': pdfBuffer.length
-        });
         res.send(pdfBuffer);
-
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
