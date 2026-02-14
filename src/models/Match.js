@@ -9,15 +9,18 @@ const Match = sequelize.define('Match', {
     },
     sport_id: {
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: false,
+        references: { model: 'sports', key: 'id' }
     },
     team_a_id: {
         type: DataTypes.UUID,
-        allowNull: true // Nullable for individual sports or placeholder
+        allowNull: true,
+        references: { model: 'teams', key: 'id' }
     },
     team_b_id: {
         type: DataTypes.UUID,
-        allowNull: true
+        allowNull: true,
+        references: { model: 'teams', key: 'id' }
     },
     status: {
         type: DataTypes.ENUM('scheduled', 'live', 'completed'),

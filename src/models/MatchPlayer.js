@@ -9,15 +9,19 @@ const MatchPlayer = sequelize.define('MatchPlayer', {
     },
     match_id: {
         type: DataTypes.UUID,
-        allowNull: false
+        allowNull: false,
+        references: { model: 'matches', key: 'id' },
+        onDelete: 'CASCADE'
     },
     team_id: {
         type: DataTypes.UUID,
-        allowNull: true
+        allowNull: true,
+        references: { model: 'teams', key: 'id' }
     },
     student_id: {
         type: DataTypes.UUID,
-        allowNull: false
+        allowNull: false,
+        references: { model: 'students', key: 'id' }
     },
     is_substitute: {
         type: DataTypes.BOOLEAN,

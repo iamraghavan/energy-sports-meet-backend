@@ -9,15 +9,19 @@ const Team = sequelize.define('Team', {
     },
     sport_id: {
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: false,
+        references: { model: 'sports', key: 'id' }
     },
     registration_id: {
         type: DataTypes.UUID,
-        allowNull: false // Linked to the purchase/entry
+        allowNull: false,
+        references: { model: 'registrations', key: 'id' },
+        onDelete: 'CASCADE'
     },
     college_id: {
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: false,
+        references: { model: 'colleges', key: 'id' }
     },
     team_name: {
         type: DataTypes.STRING,
@@ -25,7 +29,8 @@ const Team = sequelize.define('Team', {
     },
     captain_id: {
         type: DataTypes.UUID,
-        allowNull: true // Assigned later when adding members
+        allowNull: true,
+        references: { model: 'students', key: 'id' }
     },
     locked: {
         type: DataTypes.BOOLEAN,

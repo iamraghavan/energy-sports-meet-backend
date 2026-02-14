@@ -9,11 +9,14 @@ const TeamMember = sequelize.define('TeamMember', {
     },
     team_id: {
         type: DataTypes.UUID,
-        allowNull: false
+        allowNull: false,
+        references: { model: 'teams', key: 'id' },
+        onDelete: 'CASCADE'
     },
     student_id: {
         type: DataTypes.UUID,
-        allowNull: false
+        allowNull: false,
+        references: { model: 'students', key: 'id' }
     },
     role: {
         type: DataTypes.ENUM('Player', 'Captain', 'Vice-Captain'),
