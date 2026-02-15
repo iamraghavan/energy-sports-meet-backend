@@ -1,21 +1,21 @@
 const nodemailer = require('nodemailer');
-const { SESClient, SendRawEmailCommand } = require('@aws-sdk/client-ses');
+const aws = require('@aws-sdk/client-sesv2');
 require('dotenv').config();
 
-// Initialize SES Client
-const ses = new SESClient({
+// Initialize SES v2 Client
+const ses = new aws.SESv2({
     region: process.env.AWS_REGION || 'ap-south-1',
     credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID || process.env.SMTP_USER,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || process.env.SMTP_PASS // Note: SMTP_PASS is usually different, but using as fallback
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || process.env.SMTP_PASS
     }
 });
 
-console.log(`[${new Date().toISOString()}] MAIL_INIT: Using AWS SES API (Region: ${process.env.AWS_REGION || 'ap-south-1'})`);
+console.log(`[${new Date().toISOString()}] MAIL_INIT: Using AWS SES v2 API (Region: ${process.env.AWS_REGION || 'ap-south-1'})`);
 console.log(`[${new Date().toISOString()}] MAIL_INIT: Sending from ${process.env.SMTP_FROM}`);
 
 const transporter = nodemailer.createTransport({
-    SES: { ses, aws: { SendRawEmailCommand } }
+    SES: { ses, aws }
 });
 
 /**
