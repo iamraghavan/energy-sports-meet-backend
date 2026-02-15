@@ -15,6 +15,11 @@ router.get('/registrations', protect, authorize('super_admin'), adminController.
 // Verify Payment: accessible by Super Admin and Sports Head
 router.post('/verify-payment', protect, authorize('super_admin', 'sports_head'), adminController.verifyPayment);
 
+// Payment Management Routes (New)
+router.get('/payments', protect, authorize('super_admin', 'sports_head'), adminController.getPayments);
+router.get('/payments/:id', protect, authorize('super_admin', 'sports_head'), adminController.getPaymentDetails);
+router.post('/payments/:id/request-proof', protect, authorize('super_admin', 'sports_head'), adminController.requestPaymentProof);
+
 // Analytics: accessible by Super Admin only
 router.get('/analytics', protect, authorize('super_admin'), adminController.getAnalytics);
 

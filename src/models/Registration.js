@@ -115,6 +115,23 @@ const Registration = sequelize.define('Registration', {
         type: DataTypes.ENUM('pending', 'paid', 'failed'),
         defaultValue: 'pending'
     },
+    // Check-In Fields
+    checked_in: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    checkin_time: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    kit_delivered: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    id_verified: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
     status: {
         type: DataTypes.ENUM('pending', 'approved', 'rejected'),
         defaultValue: 'pending'

@@ -6,11 +6,25 @@ const { protect, authorize } = require('../middlewares/authMiddleware');
 router.use(protect);
 router.use(authorize('super_admin', 'sports_head'));
 
-router.post('/matches/schedule', sportsHeadController.scheduleMatch);
-router.patch('/matches/:id', sportsHeadController.updateMatch);
+const matchController = require('../controllers/matchController');
+
+// Match Routes (Shared Logic with Emails/Sockets)
+router.post('/matches/schedule', matchController.createMatch);
+router.patch('/matches/:matchId', matchController.updateMatchDetails);
+
+// Team Routes
 router.get('/teams', sportsHeadController.getSportTeams);
 router.post('/teams', sportsHeadController.createTeam);
+router.get('/teams/:id', sportsHeadController.getTeamDetails);
+router.put('/teams/:id', sportsHeadController.updateTeam);
+router.delete('/teams/:id', sportsHeadController.deleteTeam);
+
+// Student/Player Routes
+router.get('/students', sportsHeadController.getAllStudents);
 router.post('/teams/:teamId/players/:studentId', sportsHeadController.addPlayerToTeam);
+router.delete('/teams/:teamId/players/:studentId', sportsHeadController.removePlayerFromTeam);
+
+// Registration View
 router.get('/registrations', sportsHeadController.getRegistrations);
 
 module.exports = router;

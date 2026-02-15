@@ -159,25 +159,33 @@ exports.registerStudent = async (req, res) => {
         const { getRegistrationReceiptTemplate } = require('../utils/emailTemplates');
 
         const triggerNotifications = async () => {
-            const sportSummary = sports.map(s => `${s.name} (${s.category})`).join(', ');
+            // Full summary for Email (no length restriction)
+            const emailSportSummary = sports.map(s => `${s.name} (${s.category})`).join(', ');
+
+            // Short summary for WhatsApp (due to template variable limits)
+            let whatsappSportSummary = emailSportSummary;
+            if (sports.length > 1) {
+                whatsappSportSummary = "Multiple Events (Check Dashboard)";
+            }
 
             try {
                 await sendWhatsApp({
                     phone: mobile,
                     template_name: 'energy_sports_meet_2026_registration_received',
-                    variables: [name, registrationCode, sportSummary, 'Pending']
+                    variables: [name, registrationCode, whatsappSportSummary, 'Pending']
                 });
-            } catch (err) { console.error('WhatsApp Notification Failed'); }
+            } catch (err) { console.error('WhatsApp Notification Failed', err); }
 
             try {
-                const content = getRegistrationReceiptTemplate({ name, regCode: registrationCode, sportName: sportSummary });
+                // Use full summary for email
+                const content = getRegistrationReceiptTemplate({ name, regCode: registrationCode, sportName: emailSportSummary });
                 await sendEmail({
                     to: email,
                     subject: 'Registration Received - Energy Sports Meet 2026',
                     text: content.text,
                     html: content.html
                 });
-            } catch (err) { console.error('Email Notification Failed'); }
+            } catch (err) { console.error('Email Notification Failed', err); }
 
             try {
                 const { appendRegistrationToSheet } = require('../utils/googleSheets');

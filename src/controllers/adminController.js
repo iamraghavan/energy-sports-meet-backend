@@ -119,20 +119,170 @@ exports.generateMatchReport = async (req, res) => {
     // Technical implementation for global report
     res.json({ message: "Report generation initiated (PDF will be sent to email)" });
 };
-// @desc    Get all registrations
+// @desc    Get all registrations (Legacy)
 // @access  Private (Admin)
 exports.getAllRegistrations = async (req, res) => {
     try {
         const registrations = await Registration.findAll({
             include: [
-                { model: Student, include: [College] },
                 { model: Sport },
                 { model: Team },
                 { model: Payment }
             ],
-            order: [['createdAt', 'DESC']]
+            order: [['created_at', 'DESC']]
         });
         res.json(registrations);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// ==========================================
+// PAYMENT MANAGEMENT (New)
+// ==========================================
+
+// @desc    Get Payments (with filters & RBAC)
+// @access  Private (Admin/Sports Head)
+exports.getPayments = async (req, res) => {
+    try {
+        const { status, sport_id, date_from, date_to } = req.query;
+        let whereClause = {};
+
+        // 1. Status Filter
+        if (status) whereClause.payment_status = status;
+
+        // 2. Date Filter
+        if (date_from && date_to) {
+            whereClause.created_at = { [Op.between]: [date_from, date_to] };
+        }
+
+        // 3. Sport Filter (Role-Based)
+        let sportFilter = {};
+        
+        // If Sports Head, enforce their assigned sport
+        if (req.user.role === 'sports_head') {
+            sportFilter.id = req.user.assigned_sport_id;
+        } else if (sport_id) {
+            // If Admin and specific sport requested
+            sportFilter.id = sport_id;
+        }
+
+        const registrations = await Registration.findAll({
+            where: whereClause,
+            include: [
+                { 
+                    model: Sport, 
+                    where: sportFilter, // Apply sport filter here
+                    attributes: ['id', 'name', 'category'],
+                    required: true // Inner join to enforce sport filter
+                },
+                { model: Payment },
+                { model: Team, attributes: ['id', 'team_name'] }
+            ],
+            order: [['created_at', 'DESC']]
+        });
+
+        // Flatten for frontend table
+        const payments = registrations.map(reg => ({
+            id: reg.id,
+            registration_code: reg.registration_code,
+            student_name: reg.name, // Direct from Registration
+            college_name: reg.college_name, // Direct from Registration
+            sport_name: reg.Sports?.[0]?.name, // Assuming 1 sport per reg for now
+            amount: reg.amount,
+            status: reg.payment_status,
+            txn_id: reg.Payment?.txn_id,
+            screenshot_url: reg.Payment?.screenshot_url,
+            created_at: reg.created_at
+        }));
+
+        res.json(payments);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// @desc    Get Single Payment/Registration Detail
+// @access  Private (Admin/Sports Head)
+exports.getPaymentDetails = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const registration = await Registration.findByPk(id, {
+            include: [
+                { model: Sport },
+                { model: Payment },
+                { model: Team }
+            ]
+        });
+
+        if (!registration) return res.status(404).json({ error: 'Registration not found' });
+
+        // RBAC Check
+        if (req.user.role === 'sports_head') {
+            const hasSport = registration.Sports.some(s => s.id === req.user.assigned_sport_id);
+            if (!hasSport) return res.status(403).json({ error: 'Not authorized for this registration' });
+        }
+
+        res.json(registration);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// @desc    Request Payment Proof (Re-upload)
+// @access  Private (Admin/Sports Head)
+exports.requestPaymentProof = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId } = req.user; // Admin/SH ID
+
+        const registration = await Registration.findByPk(id, {
+            include: [{ model: Sport }]
+        });
+
+        if (!registration) return res.status(404).json({ error: 'Registration not found' });
+
+        // RBAC Check
+        if (req.user.role === 'sports_head') {
+            const hasSport = registration.Sports.some(s => s.id === req.user.assigned_sport_id);
+            if (!hasSport) return res.status(403).json({ error: 'Not authorized' });
+        }
+
+        // Send Notification
+        const { getRegistrationRejectionTemplate } = require('../utils/emailTemplates');
+        const { sendEmail } = require('../utils/email');
+        const { sendWhatsApp } = require('../utils/whatsapp');
+
+        const reason = "The uploaded payment screenshot was unclear or invalid. Please re-upload a valid proof.";
+        
+        // Email
+        try {
+            const content = getRegistrationRejectionTemplate({
+                name: registration.name, // Direct from Registration
+                sportName: registration.Sports[0]?.name,
+                regCode: registration.registration_code,
+                reason: reason
+            });
+            await sendEmail({
+                to: registration.email, // Direct from Registration
+                subject: 'Action Required: Payment Proof Issue - Energy Sports Meet',
+                html: content.html,
+                text: content.text
+            });
+        } catch (e) { console.error('Email failed', e); }
+
+        // WhatsApp
+        try {
+            await sendWhatsApp({
+                phone: registration.mobile, // Direct from Registration
+                template_name: 'energy_sports_meet_2026_action_required',
+                variables: [registration.name, registration.Sports[0]?.name, "Invalid Payment Proof"]
+            });
+        } catch (e) { console.error('WhatsApp failed', e); }
+
+        res.json({ message: 'Proof request sent to student' });
+
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
