@@ -148,7 +148,7 @@ const CalloutBox = (text, type = 'info') => {
 
 exports.getRegistrationReceiptTemplate = (data) => {
     const html = baseTemplate(`
-        <h2 style="margin-top: 0; font-size: 24px;">Registration Received! 🎉</h2>
+        <h2 style="margin-top: 0; font-size: 24px;">Registration Received!</h2>
         <p>Hi <strong>${data.name}</strong>,</p>
         <p>Thanks for signing up! We've received your application for <strong>${data.sportName}</strong>.</p>
         
@@ -169,12 +169,12 @@ exports.getRegistrationReceiptTemplate = (data) => {
 
 exports.getRegistrationApprovalTemplate = (data) => {
     const html = baseTemplate(`
-        <h2 style="margin-top: 0; color: ${colors.success};">You're In! 🎫</h2>
+        <h2 style="margin-top: 0; color: ${colors.success};">You're In!</h2>
         <p>Congratulations <strong>${data.name}</strong>,</p>
         <p>Your registration for <strong>${data.sportName}</strong> has been officially <strong>APPROVED</strong>.</p>
         
         ${CalloutBox(`
-            <h4 style="margin: 0 0 10px 0; color: ${colors.success}; font-size: 16px;">✅ Your Ticket is Ready</h4>
+            <h4 style="margin: 0 0 10px 0; color: ${colors.success}; font-size: 16px;">Your Ticket is Ready</h4>
             <p style="margin: 0;">Please find your official <strong>Entry Pass (PDF)</strong> attached to this email.</p>
         `, 'success')}
 
@@ -190,7 +190,7 @@ exports.getRegistrationApprovalTemplate = (data) => {
         </ul>
 
         <div style="text-align: center;">
-            <a href="https://energy.egspgroup.in/dashboard" class="button">View Dashboard</a> 
+            <a href="https://energy.egspgroup.in/energy/2026/student/dashboard" class="button">View Dashboard</a> 
         </div>
     `, `Confirmed! Your ${data.sportName} ticket is ready.`);
 
@@ -200,7 +200,7 @@ exports.getRegistrationApprovalTemplate = (data) => {
 
 exports.getRegistrationRejectionTemplate = (data) => {
     const html = baseTemplate(`
-        <h2 style="margin-top: 0; color: ${colors.danger};">Action Required ⚠️</h2>
+        <h2 style="margin-top: 0; color: ${colors.danger};">Action Required</h2>
         <p>Hi <strong>${data.name}</strong>,</p>
         <p>We encountered an issue while verifying your registration for <strong>${data.sportName}</strong>.</p>
         
@@ -212,7 +212,7 @@ exports.getRegistrationRejectionTemplate = (data) => {
         <p>Please log in to the portal or visit the registration desk to re-upload your payment proof or clarify your details.</p>
         
         <div style="text-align: center;">
-            <a href="https://energy.egspgroup.in/login" class="button" style="background-color: ${colors.danger};">Fix Registration</a>
+            <a href="https://energy.egspgroup.in/energy/2026/auth?action=login" class="button" style="background-color: ${colors.danger};">Fix Registration</a>
         </div>
     `, `Update regarding your ${data.sportName} registration`);
 
