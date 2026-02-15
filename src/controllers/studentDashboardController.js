@@ -473,13 +473,39 @@ exports.getTeamById = async (req, res) => {
                 {
                     model: TeamMember,
                     as: 'Members',
-                    include: [{ model: Student, attributes: ['id', 'name', 'email', 'mobile'] }]
+                    include: [{ 
+                        model: Student, 
+                        attributes: ['id', 'name', 'email', 'mobile', 'whatsapp', 'gender', 'dob', 'city', 'state', 'department', 'year_of_study', 'college_id'] 
+                    }]
                 }
             ]
         });
 
         if (!team) return res.status(404).json({ error: 'Team not found' });
-        res.json(team);
+
+        // Transform response to flatten Student details for easier frontend consumption
+        const teamJSON = team.toJSON();
+        teamJSON.Members = teamJSON.Members.map(member => {
+            const student = member.Student || {};
+            return {
+                ...member,
+                // Flattened Student Details
+                name: student.name,
+                email: student.email,
+                mobile: student.mobile,
+                whatsapp: student.whatsapp,
+                gender: student.gender,
+                dob: student.dob,
+                city: student.city,
+                state: student.state,
+                department: student.department,
+                year_of_study: student.year_of_study,
+                college_id: student.college_id,
+                Student: undefined // Remove nested object to reduce clutter
+            };
+        });
+
+        res.json(teamJSON);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
