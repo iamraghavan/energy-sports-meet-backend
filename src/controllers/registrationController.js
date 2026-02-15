@@ -268,6 +268,11 @@ exports.downloadTicket = async (req, res) => {
         });
         if (!registration) return res.status(404).json({ error: 'Registration not found' });
         const pdfBuffer = await generateRegistrationPDF(registration);
+        
+        // Set headers for file download
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="Energy_Sports_Meet_Ticket_${registration.registration_code.replace(/\//g, '_')}.pdf"`);
+        
         res.send(pdfBuffer);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -287,6 +292,10 @@ exports.downloadCheckIn = async (req, res) => {
         });
         if (!registration) return res.status(404).json({ error: 'Registration not found' });
         const pdfBuffer = await generateCheckInPDF(registration);
+        
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="Energy_Meet_CheckIn_${registration.registration_code.replace(/\//g, '_')}.pdf"`);
+        
         res.send(pdfBuffer);
     } catch (error) {
         res.status(500).json({ error: error.message });
