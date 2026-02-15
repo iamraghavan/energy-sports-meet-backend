@@ -14,7 +14,24 @@ async function appendRegistrationToSheet(data) {
 
         let auth;
 
-        if (credentialsJson && credentialsJson.trim().startsWith('{')) {
+        if (process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
+            // Priority 1: Use individual environment variables (AWS App Runner friendly)
+            try {
+                auth = new google.auth.GoogleAuth({
+                    credentials: {
+                        client_email: process.env.GOOGLE_CLIENT_EMAIL,
+                        private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'), // Handle escaped newlines
+                        project_id: process.env.GOOGLE_PROJECT_ID,
+                    },
+                    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+                });
+                console.log('✅ Google Sheets Auth: Using GOOGLE_CLIENT_EMAIL/PRIVATE_KEY env vars');
+            } catch (e) {
+                console.warn('⚠️ Google Sheets Backup: Failed to use individual env vars.', e);
+            }
+        }
+
+        if (!auth && credentialsJson && credentialsJson.trim().startsWith('{')) {
             // Priority 1: Use environment variable (Best for Render/Heroku)
             try {
                 auth = new google.auth.GoogleAuth({

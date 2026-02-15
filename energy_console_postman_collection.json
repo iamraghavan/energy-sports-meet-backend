@@ -1,0 +1,1058 @@
+{
+	"info": {
+		"_postman_id": "84387403-4016-4d50-a41d-fde169c8ecdb",
+		"name": "Energy Console Dashboard API - Complete",
+		"description": "Comprehensive API collection for Energy Sports Meet Console.\nBase URL: https://energy-sports-meet-backend.onrender.com/api/v1\nIncludes automatic token management via Login script.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Login (Admin/Console)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.token) {",
+									"    pm.collectionVariables.set(\"token\", jsonData.token);",
+									"    pm.environment.set(\"token\", jsonData.token);",
+									"    console.log(\"Token set successfully\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"identifier\": \"admin\",\n    \"password\": \"password\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Overview",
+			"item": [
+				{
+					"name": "Get Dashboard Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/overview/stats",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"overview",
+								"stats"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Super Admin",
+			"item": [
+				{
+					"name": "User Management",
+					"item": [
+						{
+							"name": "Get Users",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/users",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"admin",
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create User",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Sports Head (Cricket)\",\n    \"email\": \"cricket@egspec.org\",\n    \"username\": \"cricket_head\",\n    \"password\": \"password123\",\n    \"role\": \"sports_head\",\n    \"assigned_sport_id\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/admin/users",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"admin",
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete User",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/users/:id",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"admin",
+										"users",
+										":id"
+									],
+									"variable": [
+										{
+											"key": "id",
+											"value": "USER_ID"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Payment Management",
+					"item": [
+						{
+							"name": "Get Payments (With Filters)",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/payments?status=pending&sport_id=1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"admin",
+										"payments"
+									],
+									"query": [
+										{
+											"key": "status",
+											"value": "pending",
+											"description": "pending | paid | failed"
+										},
+										{
+											"key": "sport_id",
+											"value": "1",
+											"description": "Filter by Sport ID"
+										},
+										{
+											"key": "date_from",
+											"value": "2026-01-01",
+											"disabled": true
+										},
+										{
+											"key": "date_to",
+											"value": "2026-12-31",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Single Payment Detail",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/payments/:id",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"admin",
+										"payments",
+										":id"
+									],
+									"variable": [
+										{
+											"key": "id",
+											"value": "REGISTRATION_ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Verify Payment",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"registrationId\": \"REGISTRATION_ID\",\n    \"status\": \"approved\",\n    \"remarks\": \"Verified via screenshot\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/admin/verify-payment",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"admin",
+										"verify-payment"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Request Payment Proof",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/payments/:id/request-proof",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"admin",
+										"payments",
+										":id",
+										"request-proof"
+									],
+									"variable": [
+										{
+											"key": "id",
+											"value": "REGISTRATION_ID"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Analytics & Reports",
+					"item": [
+						{
+							"name": "Get Analytics",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/analytics",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"admin",
+										"analytics"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Generate Match Report",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/reports/matches",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"admin",
+										"reports",
+										"matches"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Sports Head",
+			"item": [
+				{
+					"name": "Team Management",
+					"item": [
+						{
+							"name": "Get Teams",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/sports-head/teams",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"sports-head",
+										"teams"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Team",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"team_name\": \"Super Strikers\",\n    \"captain_id\": null\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/sports-head/teams",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"sports-head",
+										"teams"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Team Details",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/sports-head/teams/:id",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"sports-head",
+										"teams",
+										":id"
+									],
+									"variable": [
+										{
+											"key": "id",
+											"value": "TEAM_ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Team",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"team_name\": \"Super Strikers Updated\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/sports-head/teams/:id",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"sports-head",
+										"teams",
+										":id"
+									],
+									"variable": [
+										{
+											"key": "id",
+											"value": "TEAM_ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Team",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/sports-head/teams/:id",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"sports-head",
+										"teams",
+										":id"
+									],
+									"variable": [
+										{
+											"key": "id",
+											"value": "TEAM_ID"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Player Management",
+					"item": [
+						{
+							"name": "Get All Students",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/sports-head/students",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"sports-head",
+										"students"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add Player to Team",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/sports-head/teams/:teamId/players/:studentId",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"sports-head",
+										"teams",
+										":teamId",
+										"players",
+										":studentId"
+									],
+									"variable": [
+										{
+											"key": "teamId",
+											"value": "TEAM_ID"
+										},
+										{
+											"key": "studentId",
+											"value": "STUDENT_ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Remove Player from Team",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/sports-head/teams/:teamId/players/:studentId",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"sports-head",
+										"teams",
+										":teamId",
+										"players",
+										":studentId"
+									],
+									"variable": [
+										{
+											"key": "teamId",
+											"value": "TEAM_ID"
+										},
+										{
+											"key": "studentId",
+											"value": "STUDENT_ID"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Match Management",
+					"item": [
+						{
+							"name": "Schedule Match",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"sport_id\": 1,\n    \"team_a_id\": 1,\n    \"team_b_id\": 2,\n    \"start_time\": \"2026-03-01T10:00:00Z\",\n    \"venue\": \"Main Ground\",\n    \"referee_name\": \"John Doe\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/sports-head/matches/schedule",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"sports-head",
+										"matches",
+										"schedule"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Match Details",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"start_time\": \"2026-03-01T11:00:00Z\",\n    \"venue\": \"Indoor Court\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/sports-head/matches/:matchId",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"sports-head",
+										"matches",
+										":matchId"
+									],
+									"variable": [
+										{
+											"key": "matchId",
+											"value": "MATCH_ID"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Committee",
+			"item": [
+				{
+					"name": "Search Registrations (All Filters)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/committee/registrations?search=John&sport_id=1&status=approved&payment_status=paid",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"committee",
+								"registrations"
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "John",
+									"description": "Name / Mobile / RegCode"
+								},
+								{
+									"key": "sport_id",
+									"value": "1",
+									"description": "Filter by Sport"
+								},
+								{
+									"key": "status",
+									"value": "approved",
+									"description": "pending | approved | rejected"
+								},
+								{
+									"key": "payment_status",
+									"value": "paid",
+									"description": "pending | paid | failed"
+								},
+								{
+									"key": "college_id",
+									"value": "1",
+									"description": "Filter by College",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Student Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/committee/student/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"committee",
+								"student",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "REGISTRATION_ID"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Check-In",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"checked_in\": true,\n    \"kit_delivered\": true,\n    \"id_verified\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/committee/checkin/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"committee",
+								"checkin",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "REGISTRATION_ID"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Print Pass",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/committee/registrations/:id/print-pass",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"committee",
+								"registrations",
+								":id",
+								"print-pass"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "REGISTRATION_ID"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Scorer",
+			"item": [
+				{
+					"name": "Start Match",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"live\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/scorer/matches/:id/start",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"scorer",
+								"matches",
+								":id",
+								"start"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "MATCH_ID"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Live Score",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"score_details\": {\n        \"team_a_score\": \"60/2\",\n        \"overs\": \"12.4\",\n        \"striker\": \"Player Name\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/scorer/matches/:id/score",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"scorer",
+								"matches",
+								":id",
+								"score"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "MATCH_ID"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Log Match Event",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"goal\",\n    \"team_id\": \"TEAM_ID\",\n    \"player_id\": \"PLAYER_ID\",\n    \"value\": 1,\n    \"commentary\": \"Goal scored by Player X!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/scorer/matches/:id/event",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"scorer",
+								"matches",
+								":id",
+								"event"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "MATCH_ID"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "End Match",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"completed\",\n    \"winner_id\": \"TEAM_ID\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/scorer/matches/:id/end",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"scorer",
+								"matches",
+								":id",
+								"end"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "MATCH_ID"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Public / Meta",
+			"item": [
+				{
+					"name": "Get Sports",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/sports",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"sports"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Colleges",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/colleges",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"colleges"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Live Matches",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/matches/live",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"matches",
+								"live"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Matches By Sport",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/matches/sport/:sportId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"matches",
+								"sport",
+								":sportId"
+							],
+							"variable": [
+								{
+									"key": "sportId",
+									"value": "SPORT_ID"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Match Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/matches/:matchId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"matches",
+								":matchId"
+							],
+							"variable": [
+								{
+									"key": "matchId",
+									"value": "MATCH_ID"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://energy-sports-meet-backend.onrender.com/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "YOUR_JWT_TOKEN",
+			"type": "string"
+		}
+	]
+}

@@ -1,411 +1,618 @@
 {
-    "info": {
-        "_postman_id": "77ea2f1a-b34e-4e8c-8432-15f79a6d0c92",
-        "name": "Energy Sports Meet - Student Dashboard (Full Flow)",
-        "description": "Comprehensive collection covering Student Authentication and Team/Member Management with Team-Lead first flow logic.",
-        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-    },
-    "item": [
-        {
-            "name": "01. Student Authentication",
-            "item": [
-                {
-                    "name": "Request OTP",
-                    "request": {
-                        "method": "POST",
-                        "header": [],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"identifier\": \"9942502245\",\n    \"isEmail\": false\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/api/v1/auth/student/request-otp"
-                        }
-                    },
-                    "response": []
-                },
-                {
-                    "name": "Verify OTP (Login)",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "exec": [
-                                    "var jsonData = pm.response.json();",
-                                    "if (jsonData.token) {",
-                                    "    pm.collectionVariables.set(\"token\", jsonData.token);",
-                                    "}"
-                                ],
-                                "type": "text/javascript"
-                            }
-                        }
-                    ],
-                    "request": {
-                        "method": "POST",
-                        "header": [],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"identifier\": \"9942502245\",\n    \"otp\": \"123456\"\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/api/v1/auth/student/verify-otp"
-                        }
-                    },
-                    "response": []
-                }
-            ]
-        },
-        {
-            "name": "02. Dashboard Overview",
-            "item": [
-                {
-                    "name": "Get Dashboard (All)",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}",
-                                "type": "text"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{baseUrl}}/api/v1/dashboard"
-                        }
-                    },
-                    "response": []
-                },
-                {
-                    "name": "Get Dashboard (Filter by Sport)",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}",
-                                "type": "text"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{baseUrl}}/api/v1/dashboard?sport_id=4",
-                            "query": [
-                                {
-                                    "key": "sport_id",
-                                    "value": "4"
-                                }
-                            ]
-                        }
-                    },
-                    "response": []
-                }
-            ]
-        },
-        {
-            "name": "03. Team Management",
-            "item": [
-                {
-                    "name": "Create Team",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}",
-                                "type": "text"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"sport_id\": 4,\n    \"team_name\": \"Kings XI Nagai\"\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/api/v1/dashboard/teams"
-                        }
-                    },
-                    "response": []
-                },
-                {
-                    "name": "Get Team Details",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}",
-                                "type": "text"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{baseUrl}}/api/v1/dashboard/teams/:teamId"
-                        },
-                        "variable": [
-                            {
-                                "key": "teamId",
-                                "value": "team-uuid-here"
-                            }
-                        ]
-                    },
-                    "response": []
-                },
-                {
-                    "name": "Update Team Name",
-                    "request": {
-                        "method": "PUT",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}",
-                                "type": "text"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"team_name\": \"Kings XI Updated\"\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/api/v1/dashboard/teams/:teamId"
-                        },
-                        "variable": [
-                            {
-                                "key": "teamId",
-                                "value": "team-uuid-here"
-                            }
-                        ]
-                    },
-                    "response": []
-                },
-                {
-                    "name": "Delete Team",
-                    "request": {
-                        "method": "DELETE",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}",
-                                "type": "text"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{baseUrl}}/api/v1/dashboard/teams/:teamId"
-                        },
-                        "variable": [
-                            {
-                                "key": "teamId",
-                                "value": "team-uuid-here"
-                            }
-                        ]
-                    },
-                    "response": []
-                }
-            ]
-        },
-        {
-            "name": "04. Member Management",
-            "item": [
-                {
-                    "name": "Add Member (Single)",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}",
-                                "type": "text"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"mobile\": \"9876543210\",\n    \"role\": \"Captain\",\n    \"sport_role\": \"All-rounder\"\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/api/v1/dashboard/teams/:teamId/members"
-                        },
-                        "variable": [
-                            {
-                                "key": "teamId",
-                                "value": "team-uuid-here"
-                            }
-                        ]
-                    },
-                    "response": []
-                },
-                {
-                    "name": "Bulk Add Members",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}",
-                                "type": "text"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"members\": [\n        { \"name\": \"Alicia\", \"email\": \"alicia@example.com\", \"mobile\": \"9999988880\" },\n        { \"name\": \"Robert\", \"email\": \"robert@example.com\", \"mobile\": \"9999988881\" }\n    ]\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/api/v1/dashboard/teams/:teamId/members/bulk"
-                        },
-                        "variable": [
-                            {
-                                "key": "teamId",
-                                "value": "team-uuid-here"
-                            }
-                        ]
-                    },
-                    "response": []
-                },
-                {
-                    "name": "Get Member Details",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}",
-                                "type": "text"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{baseUrl}}/api/v1/dashboard/members/:memberId"
-                        },
-                        "variable": [
-                            {
-                                "key": "memberId",
-                                "value": "member-uuid-here"
-                            }
-                        ]
-                    },
-                    "response": []
-                },
-                {
-                    "name": "Update Member (Cricket Specific)",
-                    "request": {
-                        "method": "PUT",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}",
-                                "type": "text"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"sport_role\": \"Batsman\",\n    \"batting_style\": \"Right Hand\",\n    \"bowling_style\": \"Off Spin\"\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/api/v1/dashboard/members/:memberId"
-                        },
-                        "variable": [
-                            {
-                                "key": "memberId",
-                                "value": "member-uuid-here"
-                            }
-                        ]
-                    },
-                    "response": []
-                },
-                {
-                    "name": "Bulk Update Roles",
-                    "request": {
-                        "method": "PUT",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}",
-                                "type": "text"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"memberUpdates\": [\n        { \"id\": \"uuid-1\", \"role\": \"Captain\" },\n        { \"id\": \"uuid-2\", \"role\": \"Player\" }\n    ]\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/api/v1/dashboard/members/bulk"
-                        }
-                    },
-                    "response": []
-                },
-                {
-                    "name": "Bulk Delete Members",
-                    "request": {
-                        "method": "DELETE",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}",
-                                "type": "text"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"memberIds\": [\"uuid-1\", \"uuid-2\"]\n}",
-                            "options": {
-                                "raw": {
-                                    "language": "json"
-                                }
-                            }
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/api/v1/dashboard/members/bulk"
-                        }
-                    },
-                    "response": []
-                }
-            ]
-        }
-    ],
-    "variable": [
-        {
-            "key": "baseUrl",
-            "value": "http://localhost:8080",
-            "type": "string"
-        },
-        {
-            "key": "token",
-            "value": "replace-with-verified-otp-token",
-            "type": "string"
-        }
-    ]
+	"info": {
+		"_postman_id": "84387403-4016-4d50-a41d-fde169c8ecdb",
+		"name": "Energy Console Dashboard API - Advanced",
+		"description": "Advanced API collection for Energy Sports Meet Console.\nFeatures:\n- **Automated Auth**: Login once, token applies globally.\n- **Pre-request Scripts**: Auto-injects token.\n- **Environment Variables**: Base URL & Token management.\n- **Role-Based Handlers**: Organized folders for Admin, Sports Head, Committee, Scorer.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "Login (Admin/Console)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.token) {",
+									"    pm.collectionVariables.set(\"token\", jsonData.token);",
+									"    console.log(\"✅ Token captured and set globally.\");",
+									"} else {",
+									"    console.error(\"❌ Token not found in response.\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"identifier\": \"admin\",\n    \"password\": \"password\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Overview (Shared)",
+			"item": [
+				{
+					"name": "Get Dashboard Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/overview/stats",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"overview",
+								"stats"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Super Admin",
+			"item": [
+				{
+					"name": "User Management",
+					"item": [
+						{
+							"name": "Get All Users",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/users",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"admin",
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create User",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Sports Head (Cricket)\",\n    \"email\": \"cricket@egspec.org\",\n    \"username\": \"cricket_head\",\n    \"password\": \"password123\",\n    \"role\": \"sports_head\",\n    \"assigned_sport_id\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/admin/users",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"admin",
+										"users"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Payment Management",
+					"item": [
+						{
+							"name": "Get Payments (Filtered)",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/payments?status=pending",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"admin",
+										"payments"
+									],
+									"query": [
+										{
+											"key": "status",
+											"value": "pending",
+											"description": "pending | paid | failed"
+										},
+										{
+											"key": "sport_id",
+											"value": "1",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Verify Payment",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"registrationId\": \"REG_UUID\",\n    \"status\": \"approved\",\n    \"remarks\": \"Verified manually via dashboard\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/admin/verify-payment",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"admin",
+										"verify-payment"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Reports",
+					"item": [
+						{
+							"name": "Get Analytics",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/analytics",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"admin",
+										"analytics"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "4. Sports Head",
+			"item": [
+				{
+					"name": "Get Teams",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/sports-head/teams",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"sports-head",
+								"teams"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Team",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"team_name\": \"Titans XI\",\n    \"captain_id\": null\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/sports-head/teams",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"sports-head",
+								"teams"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Players",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/sports-head/students",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"sports-head",
+								"students"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Schedule Match",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"sport_id\": 1,\n    \"team_a_id\": 1,\n    \"team_b_id\": 2,\n    \"start_time\": \"2026-03-10T09:00:00Z\",\n    \"venue\": \"Main Stadium\",\n    \"referee_name\": \"Official Referee\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/sports-head/matches/schedule",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"sports-head",
+								"matches",
+								"schedule"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Committee",
+			"item": [
+				{
+					"name": "Search Registrations",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/committee/registrations?search=test",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"committee",
+								"registrations"
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "test",
+									"description": "Name/Mobile/RegCode"
+								},
+								{
+									"key": "status",
+									"value": "approved",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Check-In Student",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"checked_in\": true,\n    \"kit_delivered\": true,\n    \"id_verified\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/committee/checkin/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"committee",
+								"checkin",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "REG_UUID"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Print Pass",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/committee/registrations/:id/print-pass",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"committee",
+								"registrations",
+								":id",
+								"print-pass"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "REG_UUID"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Scorer",
+			"item": [
+				{
+					"name": "Start Match",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"live\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/scorer/matches/:id/start",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"scorer",
+								"matches",
+								":id",
+								"start"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "MATCH_UUID"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Score",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"score_details\": {\n        \"team_a_score\": \"120/4\",\n        \"overs\": \"15.2\",\n        \"summary\": \"Need 30 runs in 28 balls\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/scorer/matches/:id/score",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"scorer",
+								"matches",
+								":id",
+								"score"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "MATCH_UUID"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Log Event",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"boundary\",\n    \"value\": \"6\",\n    \"commentary\": \"Huge six over long-on!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/scorer/matches/:id/event",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"scorer",
+								"matches",
+								":id",
+								"event"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "MATCH_UUID"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "7. Public / Meta",
+			"item": [
+				{
+					"name": "Get Sports",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/sports",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"sports"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Live Matches",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/matches/live",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"matches",
+								"live"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global Pre-request Script",
+					"// Ensures every request has access to the token variable",
+					"if (!pm.collectionVariables.get(\"token\")) {",
+					"    console.warn(\"⚠️ No token found. Please run the 'Login' request first.\");",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://energy-sports-meet-backend.onrender.com/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	]
 }

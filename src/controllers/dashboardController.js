@@ -18,9 +18,9 @@ exports.getDashboardStats = async (req, res) => {
             const totalRegistrations = await Registration.count();
             const verifiedRegistrations = await Registration.count({ where: { status: 'approved' } });
             
-            // Payment Stats
-            const totalPayments = await Payment.sum('amount', { where: { status: 'verified' } }) || 0;
-            const pendingPayments = await Payment.count({ where: { status: 'pending' } });
+            // Payment Stats (Source: Registration table)
+            const totalPayments = await Registration.sum('total_amount', { where: { payment_status: 'paid' } }) || 0;
+            const pendingPayments = await Registration.count({ where: { payment_status: 'pending' } });
 
             // Sport Breakdown
             const sports = await Sport.findAll({
