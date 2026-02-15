@@ -46,6 +46,7 @@ app.use('/api/v1/committee', require('./routes/committeeRoutes'));
 app.use('/api/v1/sports-head', require('./routes/sportsHeadRoutes'));
 app.use('/api/v1/scorer', require('./routes/scorerRoutes'));
 app.use('/api/v1/teams', require('./routes/teamRoutes'));
+app.use('/api/v1/overview', require('./routes/overviewRoutes'));
 
 // Health Check
 app.get('/health', (req, res) => {
