@@ -56,9 +56,52 @@ exports.verifyPayment = async (req, res) => {
             }
 
             // Generate Ticket PDF
+            // Generate Ticket PDF
             const pdfBuffer = await generateRegistrationPDF(registration);
 
-            // Send Notifications via Service
+            // Upload PDF to GitHub for Public CDN URL
+            const { uploadToGitHub } = require('../utils/upload'); // Ensure import
+            let ticketPdfUrl = '';
+            try {
+                ticketPdfUrl = await uploadToGitHub({
+                    buffer: pdfBuffer,
+                    name: `Ticket_${registration.registration_code.replace(/\//g, '_')}.pdf`,
+                    mimetype: 'application/pdf'
+                }, 'tickets'); // 'tickets' folder in repo
+                
+                // Save URL in DB for future reference (Optional but recommended)
+                // registration.ticket_url = ticketPdfUrl; 
+                // await registration.save({ transaction: t });
+
+            } catch (uploadErr) {
+                console.error('Failed to upload ticket to GitHub:', uploadErr);
+                // Fallback to API download link if upload fails?
+                // ticketPdfUrl = `https://energy.egspgroup.in/api/v1/registrations/${registration.id}/ticket`;
+            }
+
+            // Send Notifications via Service (Updated for WhatsApp PDF)
+             // NotificationService.notifyPaymentApproval(registration.Student, registration, pdfBuffer); - OLD
+             
+             // NEW: Manual Notification Trigger to include media_url
+            const { sendWhatsApp } = require('../utils/whatsapp');
+            await sendWhatsApp({
+                phone: registration.mobile,
+                template_name: 'energy_sports_meet_2026_payment_verified_ticket_v1',
+                media_url: ticketPdfUrl,
+                filename: 'Energy_Sports_Meet_Ticket.pdf',
+                variables: [
+                    registration.name,
+                    registration.Sports[0]?.name || 'Sports Event',
+                    '12th March 2026',
+                    '08:00 AM'
+                ],
+                buttons: [
+                    registration.id, // Variable for Download Ticket Button
+                    registration.id  // Variable for View Details Button
+                ]
+            });
+            
+            // Still send Email with attachment
             NotificationService.notifyPaymentApproval(registration.Student, registration, pdfBuffer);
 
         } else if (status === 'rejected') {
