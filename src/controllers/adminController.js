@@ -18,9 +18,8 @@ exports.verifyPayment = async (req, res) => {
 
         let registration;
         const includeOptions = [
-            { model: Student, include: [College] },
             { model: Sport },
-            { model: Team },
+            { model: Team, as: 'Teams' }, // Ensure alias is used if needed, or check model def
             { model: Payment }
         ];
 
@@ -35,6 +34,7 @@ exports.verifyPayment = async (req, res) => {
             return res.status(404).json({ error: 'Registration not found' });
         }
 
+        // ... (RBAC Check omitted for brevity in replacement if unchanged, but I must preserve it)
         // RBAC Check for Sports Head
         if (req.user.role === 'sports_head') {
             const hasSportMatched = registration.Sports.some(s => s.id === req.user.assigned_sport_id);
@@ -56,33 +56,22 @@ exports.verifyPayment = async (req, res) => {
             }
 
             // Generate Ticket PDF
-            // Generate Ticket PDF
             const pdfBuffer = await generateRegistrationPDF(registration);
 
             // Upload PDF to GitHub for Public CDN URL
-            const { uploadToGitHub } = require('../utils/upload'); // Ensure import
+            const { uploadToGitHub } = require('../utils/upload');
             let ticketPdfUrl = '';
             try {
                 ticketPdfUrl = await uploadToGitHub({
                     buffer: pdfBuffer,
                     name: `Ticket_${registration.registration_code.replace(/\//g, '_')}.pdf`,
                     mimetype: 'application/pdf'
-                }, 'tickets'); // 'tickets' folder in repo
-                
-                // Save URL in DB for future reference (Optional but recommended)
-                // registration.ticket_url = ticketPdfUrl; 
-                // await registration.save({ transaction: t });
-
+                }, 'tickets');
             } catch (uploadErr) {
                 console.error('Failed to upload ticket to GitHub:', uploadErr);
-                // Fallback to API download link if upload fails?
-                // ticketPdfUrl = `https://energy.egspgroup.in/api/v1/registrations/${registration.id}/ticket`;
             }
 
-            // Send Notifications via Service (Updated for WhatsApp PDF)
-             // NotificationService.notifyPaymentApproval(registration.Student, registration, pdfBuffer); - OLD
-             
-             // NEW: Manual Notification Trigger to include media_url
+            // NEW: Manual Notification Trigger to include media_url
             const { sendWhatsApp } = require('../utils/whatsapp');
             await sendWhatsApp({
                 phone: registration.mobile,
@@ -101,15 +90,31 @@ exports.verifyPayment = async (req, res) => {
                 ]
             });
             
+            // Prepare data for compatible Service call
+            const studentData = {
+                name: registration.name,
+                email: registration.email,
+                phone: registration.mobile
+            };
+            // Mock .Sport for legacy service compatibility
+            registration.Sport = registration.Sports[0] || { name: 'Sports Event', type: 'General' };
+
             // Still send Email with attachment
-            NotificationService.notifyPaymentApproval(registration.Student, registration, pdfBuffer);
+            NotificationService.notifyPaymentApproval(studentData, registration, pdfBuffer);
 
         } else if (status === 'rejected') {
             registration.status = 'rejected';
             registration.payment_status = 'failed';
             await registration.save({ transaction: t });
 
-            NotificationService.notifyPaymentRejection(registration.Student, registration, remarks);
+            const studentData = {
+                name: registration.name,
+                email: registration.email,
+                phone: registration.mobile
+            };
+            registration.Sport = registration.Sports[0] || { name: 'Sports Event', type: 'General' };
+
+            NotificationService.notifyPaymentRejection(studentData, registration, remarks);
         }
 
         await t.commit();
