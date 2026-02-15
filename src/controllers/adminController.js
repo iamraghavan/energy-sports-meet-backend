@@ -23,7 +23,9 @@ exports.verifyPayment = async (req, res) => {
             { model: Payment }
         ];
 
-        if (registrationId) {
+        if (registrationId && registrationId.includes('EGSP')) {
+            registration = await Registration.findOne({ where: { registration_code: registrationId }, include: includeOptions, transaction: t });
+        } else if (registrationId) {
             registration = await Registration.findByPk(registrationId, { include: includeOptions, transaction: t });
         } else if (registration_code) {
             registration = await Registration.findOne({ where: { registration_code }, include: includeOptions, transaction: t });

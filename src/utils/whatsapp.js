@@ -13,8 +13,8 @@ exports.sendWhatsApp = async ({ phone, template_name, template_language = 'en_US
             template_name: template_name,
             template_language: template_language,
             // Header Media Support (PDF/Image)
-            ...(options.media_url && { media_url: options.media_url }),
-            ...(options.filename && { filename: options.filename })
+            ...(media_url && { header: media_url }),
+            ...(filename && { filename: filename })
         };
 
         // Add variables (text1, text2, ...)
