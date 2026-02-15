@@ -236,3 +236,19 @@ exports.getMatchResultTemplate = (data) => {
     const text = `ENERGY SPORTS MEET 2026\n\nMatch Result\n\n${data.teamAName} vs ${data.teamBName}\nWinner: ${data.winnerName}\nScore: ${data.finalScore}\n\nenergy.egspgroup.in`;
     return { html, text };
 };
+
+exports.getOTPEmailTemplate = (otp) => {
+    const html = baseTemplate(`
+        <h2 style="margin-top: 0; color: ${brandColor};">Verification Code</h2>
+        <p>Use the following 6-digit code to complete your login. This code is valid for 10 minutes.</p>
+        
+        <div style="margin: 30px 0; background-color: #f3f4f6; border-radius: 10px; padding: 20px; text-align: center;">
+            <span style="font-size: 36px; font-weight: 800; letter-spacing: 10px; color: ${brandColor}; font-family: 'Courier New', Courier, monospace;">${otp}</span>
+        </div>
+        
+        <p style="font-size: 14px; color: ${mutedColor}; margin-bottom: 0;">If you didn't request this code, please ignore this email.</p>
+    `, `Your Verification Code: ${otp}`);
+
+    const text = `ENERGY SPORTS MEET 2026\n\nVerification Code: ${otp}\n\nUse this code to complete your login. Valid for 10 minutes.\n\nenergy.egspgroup.in`;
+    return { html, text };
+};

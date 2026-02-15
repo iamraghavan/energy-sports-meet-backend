@@ -1,9 +1,9 @@
 const nodemailer = require('nodemailer');
-const aws = require('@aws-sdk/client-sesv2');
+const { SESClient, SendRawEmailCommand } = require('@aws-sdk/client-ses');
 require('dotenv').config();
 
-// Initialize SES v2 Client
-const ses = new aws.SESv2({
+// Initialize SES Client (standard v3)
+const ses = new SESClient({
     region: process.env.AWS_REGION || 'ap-south-1',
     credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID || process.env.SMTP_USER,
@@ -11,11 +11,11 @@ const ses = new aws.SESv2({
     }
 });
 
-console.log(`[${new Date().toISOString()}] MAIL_INIT: Using AWS SES v2 API (Region: ${process.env.AWS_REGION || 'ap-south-1'})`);
-console.log(`[${new Date().toISOString()}] MAIL_INIT: Sending from ${process.env.SMTP_FROM}`);
+console.log(`[${new Date().toISOString()}] MAIL_INIT: Using AWS SES API (Standard V3)`);
 
+// Pass SendRawEmailCommand in the 'aws' property so Nodemailer knows how to use it
 const transporter = nodemailer.createTransport({
-    SES: { ses, aws }
+    SES: { ses, aws: { SendRawEmailCommand } }
 });
 
 /**

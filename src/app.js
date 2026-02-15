@@ -68,8 +68,29 @@ app.get('/api/debug-email-config', (req, res) => {
         user: process.env.SMTP_USER ? `${process.env.SMTP_USER.substring(0, 4)}***` : 'NOT SET',
         from: process.env.SMTP_FROM,
         secure: process.env.SMTP_SECURE,
-        node_env: process.env.NODE_ENV
+        node_env: process.env.NODE_ENV,
+        aws_region: process.env.AWS_REGION
     });
+});
+
+// TEMPORARY: Trigger Test Email
+app.get('/api/test-email', async (req, res) => {
+    try {
+        const { sendEmail } = require('./utils/email');
+        const targetEmail = req.query.to || 'raghavanofficials@gmail.com';
+
+        await sendEmail({
+            to: targetEmail,
+            subject: 'Test Email from Energy Sports Meet via SES API',
+            text: 'If you are reading this, the SES API integration is working correctly!',
+            html: '<h1>Success!</h1><p>The AES SES API integration is working correctly.</p><p>Timestamp: ' + new Date().toISOString() + '</p>'
+        });
+
+        res.json({ success: true, message: `Test email sent to ${targetEmail}` });
+    } catch (error) {
+        logger.error('Test Email Failed:', error);
+        res.status(500).json({ error: 'Test Email Failed', details: error.message });
+    }
 });
 
 // Serve Live Dashboard (Overview)
