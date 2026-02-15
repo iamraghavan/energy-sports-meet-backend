@@ -235,7 +235,7 @@ exports.getRegistrations = async (req, res) => {
 
         const registrations = await Registration.findAll({
             where: whereClause,
-            include: [{ model: Sport }, { model: Team }, { model: Payment }],
+            include: [{ model: Sport }, { model: Team, as: 'Teams' }, { model: Payment }],
             order: [['created_at', 'DESC']]
         });
         res.json(registrations);
@@ -254,7 +254,7 @@ exports.getRegistrationById = async (req, res) => {
         let whereClause = id.includes('EGSP') ? { registration_code: id } : { id };
         const registration = await Registration.findOne({
             where: whereClause,
-            include: [{ model: Sport }, { model: Team }, { model: Payment }]
+            include: [{ model: Sport }, { model: Team, as: 'Teams' }, { model: Payment }]
         });
         if (!registration) return res.status(404).json({ error: 'Registration not found' });
         res.json(registration);

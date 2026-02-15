@@ -5,13 +5,16 @@ require('dotenv').config();
  * Send WhatsApp message using TryowBot API
  * @param {Object} options - { phone, template_name, variables, buttons }
  */
-exports.sendWhatsApp = async ({ phone, template_name, template_language = 'en_US', variables = [], buttons = [] }) => {
+exports.sendWhatsApp = async ({ phone, template_name, template_language = 'en_US', variables = [], buttons = [], media_url = null, filename = null }) => {
     try {
         const payload = {
             token: process.env.WHATSAPP_TOKEN,
             phone: phone.startsWith('91') ? phone : `91${phone}`, // Ensure 91 prefix for India
             template_name: template_name,
-            template_language: template_language
+            template_language: template_language,
+            // Header Media Support (PDF/Image)
+            ...(options.media_url && { media_url: options.media_url }),
+            ...(options.filename && { filename: options.filename })
         };
 
         // Add variables (text1, text2, ...)
