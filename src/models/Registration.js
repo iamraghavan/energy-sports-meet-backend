@@ -80,7 +80,7 @@ const Registration = sequelize.define('Registration', {
     },
     college_state: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: true
     },
     pd_name: {
         type: DataTypes.STRING,
