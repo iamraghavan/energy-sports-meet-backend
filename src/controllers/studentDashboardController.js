@@ -8,6 +8,10 @@ const { Op } = require('sequelize');
  */
 exports.getDashboard = async (req, res) => {
     try {
+        const { sport_id } = req.query;
+        let teamWhere = { registration_id: req.student.id };
+        if (sport_id) teamWhere.sport_id = sport_id;
+
         // req.student is the Registration record from protectStudent middleware
         const registration = await Registration.findByPk(req.student.id, {
             include: [
@@ -18,6 +22,8 @@ exports.getDashboard = async (req, res) => {
                 {
                     model: Team,
                     as: 'Teams',
+                    where: teamWhere,
+                    required: false, // Don't filter out registration if no teams match
                     include: [
                         {
                             model: TeamMember,
@@ -430,6 +436,59 @@ exports.bulkDeleteTeamMembers = async (req, res) => {
         res.json({ message: 'Members deleted successfully' });
     } catch (error) {
         if (t) await t.rollback();
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * @desc    Get Specific Team Details
+ * @route   GET /api/v1/dashboard/teams/:teamId
+ */
+exports.getTeamById = async (req, res) => {
+    try {
+        const { teamId } = req.params;
+        const team = await Team.findOne({
+            where: { id: teamId, registration_id: req.student.id },
+            include: [
+                { model: Sport },
+                {
+                    model: TeamMember,
+                    as: 'Members',
+                    include: [{ model: Student, attributes: ['id', 'name', 'email', 'mobile'] }]
+                }
+            ]
+        });
+
+        if (!team) return res.status(404).json({ error: 'Team not found' });
+        res.json(team);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * @desc    Get Specific Team Member Details
+ * @route   GET /api/v1/dashboard/members/:memberId
+ */
+exports.getTeamMemberById = async (req, res) => {
+    try {
+        const { memberId } = req.params;
+        const member = await TeamMember.findByPk(memberId, {
+            include: [
+                { model: Student },
+                {
+                    model: Team,
+                    attributes: ['id', 'team_name', 'registration_id']
+                }
+            ]
+        });
+
+        if (!member || member.Team.registration_id !== req.student.id) {
+            return res.status(404).json({ error: 'Member not found or unauthorized' });
+        }
+
+        res.json(member);
+    } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };

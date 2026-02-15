@@ -1,0 +1,344 @@
+{
+    "info": {
+        "name": "Energy Sports Meet - Team & Member Management (Advanced)",
+        "description": "Comprehensive API collection for managing sports teams and members, including advanced bulk operations and sport-specific metadata.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Dashboard Overview",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{token}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseUrl}}/api/v1/dashboard?sport_id=4",
+                    "query": [
+                        {
+                            "key": "sport_id",
+                            "value": "4",
+                            "description": "Optional: Filter by Sport ID"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Team Management",
+            "item": [
+                {
+                    "name": "Get Team Details",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/dashboard/teams/:teamId"
+                        },
+                        "variable": [
+                            {
+                                "key": "teamId",
+                                "value": "team-uuid-123"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Create Team",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"sport_id\": 4,\n    \"team_name\": \"Kings XI Nagai\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/dashboard/teams"
+                        }
+                    }
+                },
+                {
+                    "name": "Update Team",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"team_name\": \"Royal Challengers Nagai\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/dashboard/teams/:teamId"
+                        },
+                        "variable": [
+                            {
+                                "key": "teamId",
+                                "value": "team-uuid-123"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Delete Team",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/dashboard/teams/:teamId"
+                        },
+                        "variable": [
+                            {
+                                "key": "teamId",
+                                "value": "team-uuid-123"
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Member Management (Single)",
+            "item": [
+                {
+                    "name": "Get Member Details",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/dashboard/members/:memberId"
+                        },
+                        "variable": [
+                            {
+                                "key": "memberId",
+                                "value": "member-uuid-456"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Add Member",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"mobile\": \"9876543210\",\n    \"role\": \"Captain\",\n    \"sport_role\": \"All-rounder\",\n    \"batting_style\": \"Right Hand\",\n    \"bowling_style\": \"Right Arm Fast\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/dashboard/teams/:teamId/members"
+                        },
+                        "variable": [
+                            {
+                                "key": "teamId",
+                                "value": "team-uuid-123"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Update Member",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"sport_role\": \"Opening Batsman\",\n    \"batting_style\": \"Left Hand\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/dashboard/members/:memberId"
+                        },
+                        "variable": [
+                            {
+                                "key": "memberId",
+                                "value": "member-uuid-456"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Delete Member",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/dashboard/members/:memberId"
+                        },
+                        "variable": [
+                            {
+                                "key": "memberId",
+                                "value": "member-uuid-456"
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Member Management (Bulk)",
+            "item": [
+                {
+                    "name": "Bulk Add Members",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"members\": [\n        {\n            \"name\": \"Alice\",\n            \"email\": \"alice@example.com\",\n            \"mobile\": \"9999988888\",\n            \"role\": \"Player\"\n        },\n        {\n            \"name\": \"Bob\",\n            \"email\": \"bob@example.com\",\n            \"mobile\": \"9999977777\",\n            \"role\": \"Vice-Captain\",\n            \"sport_role\": \"Wicket Keeper\"\n        }\n    ]\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/dashboard/teams/:teamId/members/bulk"
+                        },
+                        "variable": [
+                            {
+                                "key": "teamId",
+                                "value": "team-uuid-123"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Bulk Update Members",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"memberUpdates\": [\n        {\n            \"id\": \"uuid-1\",\n            \"role\": \"Captain\"\n        },\n        {\n            \"id\": \"uuid-2\",\n            \"sport_role\": \"Fast Bowler\"\n        }\n    ]\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/dashboard/members/bulk"
+                        }
+                    }
+                },
+                {
+                    "name": "Bulk Delete Members",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"memberIds\": [\"uuid-1\", \"uuid-2\"]\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/dashboard/members/bulk"
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8080"
+        },
+        {
+            "key": "token",
+            "value": "your-jwt-here"
+        }
+    ]
+}

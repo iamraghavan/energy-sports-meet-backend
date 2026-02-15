@@ -6,15 +6,17 @@ const { protectStudent } = require('../middlewares/authMiddleware');
 // All routes here require student authentication (via Registration record)
 router.use(protectStudent);
 
-router.get('/', dashboardController.getDashboard);
+router.get('/', dashboardController.getDashboard); // Optional ?sport_id=X filter
 
 // Team Management
+router.get('/teams/:teamId', dashboardController.getTeamById);
 router.post('/teams', dashboardController.createTeam);
 router.put('/teams/:teamId', dashboardController.updateTeam);
 router.delete('/teams/:teamId', dashboardController.deleteTeam);
 router.post('/teams/:teamId/members', dashboardController.addTeamMember);
 
 // Member Management
+router.get('/members/:memberId', dashboardController.getTeamMemberById);
 router.post('/teams/:teamId/members/bulk', dashboardController.bulkAddTeamMembers);
 router.put('/members/bulk', dashboardController.bulkUpdateTeamMembers);
 router.delete('/members/bulk', dashboardController.bulkDeleteTeamMembers);
