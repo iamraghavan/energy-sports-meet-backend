@@ -171,14 +171,26 @@ exports.addTeamMember = async (req, res) => {
         t = await sequelize.transaction();
 
         // 1. Find or Create Student
-        let student = await Student.findOne({
-            where: { [Op.or]: [{ email }, { mobile }] },
-            transaction: t
-        });
+        let student;
+        const whereClause = [];
+        if (email) whereClause.push({ email });
+        if (mobile) whereClause.push({ mobile });
+
+        if (whereClause.length > 0) {
+            student = await Student.findOne({
+                where: { [Op.or]: whereClause },
+                transaction: t
+            });
+        }
 
         if (!student) {
+            // If no identifier provided, OR no existing student found, create a new one.
+            // Note: If no email/mobile, we create a new student record every time.
             student = await Student.create({
-                name, email, mobile, dob, gender, city: city || req.student.city, state: state || req.student.state,
+                name, 
+                email: email || null, 
+                mobile: mobile || null, 
+                dob, gender, city: city || req.student.city, state: state || req.student.state,
                 college_id: team.college_id
             }, { transaction: t });
         }
@@ -303,16 +315,23 @@ exports.bulkAddTeamMembers = async (req, res) => {
         const createdMembers = [];
         for (const m of members) {
             // Find or Create Student
-            let student = await Student.findOne({
-                where: { [Op.or]: [{ email: m.email }, { mobile: m.mobile }] },
-                transaction: t
-            });
+            let student;
+            const whereClause = [];
+            if (m.email) whereClause.push({ email: m.email });
+            if (m.mobile) whereClause.push({ mobile: m.mobile });
+
+            if (whereClause.length > 0) {
+                student = await Student.findOne({
+                    where: { [Op.or]: whereClause },
+                    transaction: t
+                });
+            }
 
             if (!student) {
                 student = await Student.create({
                     name: m.name,
-                    email: m.email,
-                    mobile: m.mobile,
+                    email: m.email || null,
+                    mobile: m.mobile || null,
                     dob: m.dob,
                     gender: m.gender,
                     city: m.city || req.student.city,

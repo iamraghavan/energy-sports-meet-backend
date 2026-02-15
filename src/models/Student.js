@@ -21,7 +21,7 @@ const Student = sequelize.define('Student', {
     },
     email: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
         unique: true,
         validate: {
             isEmail: true
@@ -29,7 +29,7 @@ const Student = sequelize.define('Student', {
     },
     mobile: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
         unique: true
     },
     whatsapp: {
