@@ -218,13 +218,13 @@ exports.getAllStudents = async (req, res) => {
         
         // Fetch from Registration, not Student
         const registrations = await Registration.findAll({
-            where: { status: 'approved' },
+            where: { sport_id, status: 'approved' },
             include: [
                 {
                     model: Sport, 
                     where: { id: sport_id }
                 },
-                { model: Team, attributes: ['id', 'team_name'] }
+                { model: Team, as: 'Teams', attributes: ['id', 'team_name'] }
             ]
         });
 

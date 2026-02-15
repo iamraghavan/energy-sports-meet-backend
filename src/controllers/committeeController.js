@@ -122,7 +122,7 @@ exports.getStudentDetails = async (req, res) => {
     // Assuming frontend calls this with Registration ID from the table.
     try {
         const registration = await Registration.findByPk(req.params.id, {
-            include: [{ model: Sport }, { model: Payment }, { model: Team }]
+            include: [{ model: Sport }, { model: Payment }, { model: Team, as: 'Teams' }]
         });
 
         if (!registration) return res.status(404).json({ error: 'Student/Registration not found' });

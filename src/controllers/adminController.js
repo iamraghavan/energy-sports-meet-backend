@@ -126,7 +126,7 @@ exports.getAllRegistrations = async (req, res) => {
         const registrations = await Registration.findAll({
             include: [
                 { model: Sport },
-                { model: Team },
+                { model: Team, as: 'Teams' },
                 { model: Payment }
             ],
             order: [['created_at', 'DESC']]
@@ -177,7 +177,7 @@ exports.getPayments = async (req, res) => {
                     required: true // Inner join to enforce sport filter
                 },
                 { model: Payment },
-                { model: Team, attributes: ['id', 'team_name'] }
+                { model: Team, as: 'Teams', attributes: ['id', 'team_name'] }
             ],
             order: [['created_at', 'DESC']]
         });
@@ -212,7 +212,7 @@ exports.getPaymentDetails = async (req, res) => {
             include: [
                 { model: Sport },
                 { model: Payment },
-                { model: Team }
+                { model: Team, as: 'Teams' }
             ]
         });
 
