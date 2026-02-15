@@ -78,6 +78,7 @@ exports.verifyPayment = async (req, res) => {
             await sendWhatsApp({
                 phone: registration.mobile,
                 template_name: 'energy_sports_meet_2026_payment_verified_ticket_v1',
+                template_language: 'en',
                 media_url: ticketPdfUrl,
                 filename: 'Energy_Sports_Meet_Ticket.pdf',
                 variables: [

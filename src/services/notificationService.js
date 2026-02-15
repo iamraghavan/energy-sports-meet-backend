@@ -36,13 +36,15 @@ class NotificationService {
                 ]
             });
 
-            // 2. Send WhatsApp
+            // 2. Send WhatsApp - REMOVED (Handled in Controller with PDF Header)
+            /*
             await sendWhatsApp({
                 phone: student.phone,
                 template_name: 'payment_success',
                 variables: [student.name, registration.Sport.name, registration.registration_code],
                 buttons: [`${process.env.FRONTEND_URL}/registration/status?id=${registration.registration_code}`]
             });
+            */
 
             logger.info(`Notifications sent to ${student.name} for approved registration ${registration.registration_code}`);
         } catch (error) {
