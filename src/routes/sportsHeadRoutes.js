@@ -8,6 +8,10 @@ router.use(authorize('super_admin', 'sports_head'));
 
 const matchController = require('../controllers/matchController');
 
+// Overview Stats
+router.get('/stats', sportsHeadController.getOverviewStats);
+router.get('/analytics', sportsHeadController.getAnalytics);
+
 // Match Routes (Shared Logic with Emails/Sockets)
 router.post('/matches/schedule', matchController.createMatch);
 router.patch('/matches/:matchId', matchController.updateMatchDetails);

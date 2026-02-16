@@ -58,12 +58,12 @@ exports.getDashboardStats = async (req, res) => {
             if (!assigned_sport_id) return res.status(400).json({ error: 'No sport assigned to this Sports Head' });
 
             const sport = await Sport.findByPk(assigned_sport_id);
+            if (!sport) return res.status(404).json({ error: 'Assigned Sport not found' });
             
             // Count Teams
             const teamCount = await Team.count({ where: { sport_id: assigned_sport_id } });
             
             // Count Players (Approximated by Registrations for that sport)
-            // Note: Registration <-> Sport is M:N
             const playerCount = await Registration.count({
                 include: [{
                     model: Sport,
@@ -76,6 +76,7 @@ exports.getDashboardStats = async (req, res) => {
             const upcomingMatches = await Match.count({
                 where: {
                     sport_id: assigned_sport_id,
+                    start_time: { [Op.gt]: new Date() },
                     status: 'scheduled'
                 }
             });
@@ -86,6 +87,15 @@ exports.getDashboardStats = async (req, res) => {
                 }
             });
 
+             // Recent Activity
+             const recentRegistrations = await Registration.findAll({
+                include: [{ model: Sport, where: { id: assigned_sport_id }, attributes: [] }],
+                where: { status: 'approved' },
+                limit: 5,
+                order: [['updated_at', 'DESC']],
+                attributes: ['id', 'name', 'registration_code', 'updated_at']
+            });
+
             stats = {
                 title: `${sport.name} Overview`,
                 kpi: [
@@ -94,6 +104,7 @@ exports.getDashboardStats = async (req, res) => {
                     { label: 'Upcoming Matches', value: upcomingMatches, icon: 'calendar' },
                     { label: 'Completed Matches', value: completedMatches, icon: 'check-circle' }
                 ],
+                recent_activity: recentRegistrations, // Added this field
                 actions: [
                     { label: 'Create Team', link: '/dashboard/teams/new' },
                     { label: 'Schedule Match', link: '/dashboard/matches/new' }

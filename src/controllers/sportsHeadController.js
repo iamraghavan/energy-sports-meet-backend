@@ -1,4 +1,116 @@
-const { Match, Team, Sport, Registration, Student, College, sequelize } = require('../models');
+const { Match, Team, Sport, Registration, Student, College, sequelize, TeamMember } = require('../models');
+const { Op } = require('sequelize');
+
+// ==========================================
+// OVERVIEW STATS
+// ==========================================
+
+// @desc    Get Overview Stats for Sports Head Dashboard
+// @access  Private (Sports Head)
+exports.getOverviewStats = async (req, res) => {
+    try {
+        const sport_id = req.user.assigned_sport_id;
+
+        // 1. Total Teams
+        const totalTeams = await Team.count({ where: { sport_id } });
+
+        // 2. Total Registered Players (Approved Registrations for this Sport)
+        // Note: This counts approved registrations, not necessarily players assigned to teams.
+        const totalPlayers = await Registration.count({
+            include: [{
+                model: Sport,
+                where: { id: sport_id }
+            }],
+            where: { status: 'approved' }
+        });
+
+        // 3. Upcoming Matches
+        const upcomingMatches = await Match.count({
+            where: {
+                sport_id,
+                start_time: { [Op.gt]: new Date() },
+                status: 'scheduled'
+            }
+        });
+
+        // 4. Live Matches (Optional, if applicable)
+        const liveMatches = await Match.count({
+            where: {
+                sport_id,
+                status: 'live' // Assuming 'live' status exists
+            }
+        });
+        
+        // 5. Recent Activity (Last 5 approved registrations)
+        const recentRegistrations = await Registration.findAll({
+            include: [{ model: Sport, where: { id: sport_id }, attributes: [] }],
+            where: { status: 'approved' },
+            limit: 5,
+            order: [['updated_at', 'DESC']],
+            attributes: ['id', 'name', 'registration_code', 'updated_at']
+        });
+
+        res.json({
+            stats: {
+                total_teams: totalTeams,
+                total_players: totalPlayers,
+                upcoming_matches: upcomingMatches,
+                live_matches: liveMatches
+            },
+            recent_activity: recentRegistrations
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// @desc    Get Detailed Analytics for Sports Head
+// @access  Private (Sports Head)
+exports.getAnalytics = async (req, res) => {
+    try {
+        const sport_id = req.user.assigned_sport_id;
+
+        // 1. Match Statistics
+        const matches = await Match.findAll({
+            where: { sport_id },
+            attributes: ['status', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
+            group: ['status']
+        });
+
+        // 2. Team Statistics (Player counts per team)
+        const teams = await Team.findAll({
+            where: { sport_id },
+            attributes: ['id', 'team_name'],
+            include: [{
+                model: TeamMember,
+                as: 'Members', // Ensure alias definition in models/index.js match this
+                attributes: []
+            }],
+            attributes: [
+                'id', 
+                'team_name',
+                [sequelize.fn('COUNT', sequelize.col('Members.id')), 'player_count']
+            ],
+            group: ['Team.id', 'Team.team_name'] 
+        });
+
+        // 3. Registration Trends (Last 7 days) - Optional optimization
+        // ...
+
+        res.json({
+            match_distribution: matches.reduce((acc, curr) => {
+                acc[curr.status] = parseInt(curr.getDataValue('count'));
+                return acc;
+            }, { scheduled: 0, completed: 0, live: 0 }),
+            team_sizes: teams,
+            total_matches: matches.reduce((sum, curr) => sum + parseInt(curr.getDataValue('count')), 0)
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
 // ==========================================
 // MATCH MANAGEMENT
