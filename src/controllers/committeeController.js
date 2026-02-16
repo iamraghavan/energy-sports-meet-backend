@@ -90,7 +90,7 @@ exports.updateCheckIn = async (req, res) => {
     }
 };
 
-// @desc    Generate Check-in Pass (PDF)
+// @desc    Generate Check-in Pass (HTML)
 // @access  Private (Committee/Admin)
 exports.generatePass = async (req, res) => {
     try {
@@ -100,15 +100,14 @@ exports.generatePass = async (req, res) => {
 
         if (!registration) return res.status(404).json({ error: 'Registration not found' });
 
-        const pdfBuffer = await generateCheckInPDF(registration);
+        // Generate HTML instead of PDF
+        const { generatePassHTML } = require('../utils/passTemplate');
+        const passHtml = await generatePassHTML(registration);
 
-        res.set({
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': `inline; filename="CheckIn_Pass_${registration.registration_code}.pdf"`
-        });
-
-        res.send(pdfBuffer);
+        res.set('Content-Type', 'text/html');
+        res.send(passHtml);
     } catch (error) {
+        console.error("Pass Generation Error:", error);
         res.status(500).json({ error: error.message });
     }
 };
