@@ -3,8 +3,22 @@ const bwipjs = require('bwip-js');
 const path = require('path');
 const fs = require('fs');
 
+// Helper to convert image file to Base64
+const getBase64Image = (filePath) => {
+    try {
+        if (fs.existsSync(filePath)) {
+            const ext = path.extname(filePath).slice(1);
+            const data = fs.readFileSync(filePath);
+            return `data:image/${ext};base64,${data.toString('base64')}`;
+        }
+    } catch (err) {
+        console.error("Error reading image:", err);
+    }
+    return null;
+};
+
 /**
- * Generate HTML for Check-in Pass
+ * Generate HTML for Check-in Pass (A5 Landscape - EaseMyTrip Style)
  * @param {Object} registration 
  * @returns {Promise<string>} HTML String
  */
@@ -20,343 +34,247 @@ exports.generatePassHTML = async (registration) => {
         bcid: 'code128',
         text: registration.registration_code,
         scale: 2,
-        height: 15,
-        includetext: false, // Text is displayed below manually in HTML
+        height: 10,
+        includetext: true,
+        textxalign: 'center',
         padding: 5,
         backgroundcolor: 'ffffff'
     });
     const barcodeImage = `data:image/png;base64,${barcodeBuffer.toString('base64')}`;
 
-    // 3. Format Data
-    const name = registration.name || registration.dataValues?.name; // Handle potential structure diff
-    const code = registration.registration_code;
-    const paymentStatus = registration.payment_status.toUpperCase();
+    // 3. Get Logo
+    const logoPath = path.join(process.cwd(), 'src/public/Energy_college_logo.png');
+    const logoImage = getBase64Image(logoPath);
+
+    // 4. Format Data
+    const regData = registration.dataValues || registration;
+    const name = regData.name || "N/A";
+    const code = regData.registration_code;
+    const mobile = regData.mobile || "N/A";
+    const email = regData.email || "N/A";
+    const paymentStatus = (regData.payment_status || 'pending').toUpperCase();
+    const accommodation = regData.accommodation_needed ? 'Yes' : 'No';
+    const gender = regData.gender || "N/A";
+    const college = regData.college_name || "Unknown College";
     
     // Join sports if multiple
     let sport = "N/A";
     let category = "N/A";
-    if (registration.Sports && registration.Sports.length > 0) {
-        sport = registration.Sports.map(s => s.name).join(', ');
-        category = registration.Sports[0].category; // Assuming same category or taking first
+    let amount = regData.total_amount || 0;
+    
+    if (regData.Sports && regData.Sports.length > 0) {
+        sport = regData.Sports.map(s => s.name).join(', ');
+        category = regData.Sports[0].category; 
     }
 
-    const college = registration.college_name || "Unknown College";
-    const gender = registration.gender || "N/A";
-    const checkinTime = registration.checked_in && registration.checkin_time 
-        ? new Date(registration.checkin_time).toLocaleTimeString() 
-        : "Not Checked In";
+    const createdDate = new Date(regData.created_at || Date.now()).toDateString();
+    const createdTime = new Date(regData.created_at || Date.now()).toLocaleTimeString();
 
-    // 4. Return HTML Template
+    // 5. Return HTML Template (A5 Landscape - Flight Ticket Style)
     return `
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8" />
-<title>Check-in Pass - ${code}</title>
+<title>Pass - ${code}</title>
 <style>
 /* PRINT SETTINGS */
 @page {
-  size: A4 landscape;
+  size: A5 landscape; /* 210mm x 148mm */
   margin: 0;
 }
 
 body {
   margin: 0;
-  background: #e0e0e0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: white;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #333;
   -webkit-print-color-adjust: exact;
 }
 
-/* A4 container (Landscape) */
 .page {
-  width: 297mm;
-  height: 210mm;
+  width: 210mm;
+  height: 148mm;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: 10mm;
   display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* PASS CARD (A5 roughly or custom size) */
-.pass-container {
-  width: 220mm;
-  height: 90mm;
-  display: flex;
+  flex-direction: column;
+  position: relative;
   background: white;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-  overflow: hidden;
-  border-radius: 12px;
-  position: relative;
 }
 
-/* WATERMARK */
-.watermark {
-    position: absolute;
-    top: 50%;
-    left: 40%;
-    transform: translate(-50%, -50%) rotate(-30deg);
-    font-size: 80px;
-    color: rgba(0,0,0,0.03);
-    font-weight: bold;
-    pointer-events: none;
-    z-index: 0;
-}
-
-/* LEFT BARCODE STRIP */
-.barcode-strip {
-  width: 18mm;
-  background: #f8f9fa;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-right: 2px dashed #ddd;
-  position: relative;
-}
-
-.barcode-strip img {
-    transform: rotate(-90deg);
-    /* width: 80mm; equivalent to height when rotated */
-    max-width: 80mm; 
-}
-
-/* CENTER MAIN INFO */
-.center {
-  flex: 1;
-  padding: 10mm 15mm;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  z-index: 1;
-}
-
-/* RIGHT BLUE PANEL */
-.right {
-  width: 75mm;
-  background: linear-gradient(135deg, #1f2d78 0%, #0d1642 100%);
-  color: white;
-  padding: 8mm;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  text-align: center;
-  position: relative;
+@media print {
+    .page { border: none; width: 100%; height: 100%; }
 }
 
 /* HEADER */
-.header-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 2px solid #eee;
-    padding-bottom: 10px;
-    margin-bottom: 15px;
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #efefef;
+  padding-bottom: 8px;
+  margin-bottom: 5px;
 }
 
-.header-title {
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  color: #1f2d78;
-  text-transform: uppercase;
+.logo-area img {
+    height: 40px;
 }
-
-.report-time {
-    font-size: 10px;
-    background: #eef2ff;
-    color: #1f2d78;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-weight: 600;
-}
-
-/* PLAYER NAME */
-.name {
-  font-size: 24px;
-  font-weight: 800;
-  color: #222;
-  line-height: 1.2;
-}
-
-.code-badge {
-  display: inline-block;
-  font-size: 12px;
-  background: #222;
-  color: #fff;
-  padding: 2px 6px;
-  border-radius: 4px;
-  margin-bottom: 12px;
-  margin-top: 4px;
-}
-
-/* GRID */
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px 20px;
-  font-size: 12px;
-  margin-top: 5px;
-}
-
-.field {
-    display: flex;
-    flex-direction: column;
-}
-
-.label {
-  font-size: 9px;
-  color: #888;
-  text-transform: uppercase;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
-.value {
-  font-weight: 600;
-  color: #333;
-  font-size: 13px;
-}
-
-/* RIGHT PANEL STYLES */
-.event-logo-text {
-    font-size: 16px;
-    font-weight: 800;
-    line-height: 1.2;
-    margin-bottom: 5px;
-}
-
-.event-sub {
-    font-size: 10px;
-    opacity: 0.8;
-}
-
-.qr-container {
-    background: white;
-    padding: 8px;
-    border-radius: 8px;
-    width: 38mm;
-    height: 38mm;
-    margin: 10px auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.qr-container img {
-    width: 100%;
-    height: 100%;
-}
-
-.gate-info {
-    font-size: 12px;
+.logo-area {
+    font-size: 20px;
     font-weight: bold;
-    border: 1px solid rgba(255,255,255,0.3);
-    padding: 5px;
-    border-radius: 4px;
+    color: #004080;
+}
+
+.pass-title {
+    text-align: right;
+    font-weight: 900;
+    color: #004080;
+    line-height: 1.2;
+}
+.pass-title-main { font-size: 18px; letter-spacing: 1px; }
+.pass-title-sub { font-size: 12px; opacity: 0.8; }
+
+/* GREETING */
+.greeting {
+    font-size: 11px;
+    margin-bottom: 15px;
     margin-top: 5px;
 }
+.greeting strong {
+    color: #0056b3; 
+}
 
-.status-badge {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    font-size: 10px;
-    background: #00ff88;
-    color: #004422;
-    padding: 2px 6px;
-    border-radius: 4px;
+/* TABLES STYLES (Blue Header) */
+.section-title {
+    font-size: 12px;
     font-weight: bold;
+    color: #0056b3;
+    margin-bottom: 4px;
+    margin-top: 15px;
 }
 
-/* Print Handling */
-@media print {
-    body { background: white; }
-    .page { width: auto; height: auto; display: block; }
-    .pass-container { 
-        border: 1px solid #ddd; /* Better visibility on print */
-        page-break-inside: avoid;
-        margin: 10mm auto;
-    }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10px;
+    margin-bottom: 8px;
 }
+
+th {
+    background-color: #e3f2fd; /* Light Blue */
+    color: #000;
+    font-weight: bold;
+    text-align: left;
+    padding: 6px 8px;
+    border: 1px solid #dee2e6;
+}
+
+td {
+    padding: 6px 8px;
+    border: 1px solid #dee2e6;
+    color: #333;
+}
+
+/* FOOTER CODES */
+.footer-codes {
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding-top: 10px;
+    border-top: 1px dashed #ccc;
+}
+
+.barcode img { height: 25px; }
+.qr img { height: 60px; }
+
 </style>
 </head>
-
 <body>
 
 <div class="page">
-  <div class="pass-container">
-
-    <div class="watermark">ENERGY 2026</div>
-
-    <!-- BARCODE -->
-    <div class="barcode-strip">
-      <img src="${barcodeImage}">
+  
+  <!-- Header -->
+  <div class="header">
+    <div class="logo-area">
+        ${logoImage ? `<img src="${logoImage}" alt="Logo">` : 'ENERGY SPORTS'}
     </div>
-
-    <!-- CENTER INFO -->
-    <div class="center">
-      
-      <div class="header-row">
-          <div class="header-title">OFFICIAL ENTRY PASS</div>
-          <div class="report-time">REPORT BEFORE 08:30 AM</div>
-      </div>
-
-      <div>
-          <div class="name">${name}</div>
-          <div class="code-badge">${code}</div>
-      </div>
-
-      <div class="grid">
-        <div class="field">
-          <div class="label">Participating Sport</div>
-          <div class="value" style="color:#1f2d78">${sport}</div>
-        </div>
-
-        <div class="field">
-          <div class="label">Category / Gender</div>
-          <div class="value">${category} / ${gender}</div>
-        </div>
-
-        <div class="field">
-          <div class="label">Representing College</div>
-          <div class="value">${college}</div>
-        </div>
-
-        <div class="field">
-           <div class="label">Payment Status</div>
-           <div class="value" style="color: ${paymentStatus === 'PAID' ? 'green' : 'red'}">${paymentStatus}</div>
-        </div>
-      </div>
-
+    <div class="pass-title">
+        <div class="pass-title-main">ENERGY '26</div>
+        <div class="pass-title-sub">CHECK-IN PASS</div>
     </div>
-
-    <!-- RIGHT PANEL -->
-    <div class="right">
-      
-      ${registration.checked_in ? '<div class="status-badge">CHECKED IN</div>' : ''}
-
-      <div>
-        <div class="event-logo-text">ENERGY<br>SPORTS MEET</div>
-        <div class="event-sub">2026 Edition</div>
-      </div>
-
-      <div class="qr-container">
-        <img src="${qrImage}">
-      </div>
-
-      <div class="gate-info">
-        ENTRY GATE 04
-      </div>
-
-    </div>
-
   </div>
-</div>
 
-<script>
-    // Automatically open print dialog
-    window.onload = function() {
-        // Optional: window.print();
-    }
-</script>
+  <div class="greeting">
+    Hi <strong>${name}</strong>,<br>
+    Your registration for <strong>Energy Sports Meet 2026</strong> is confirmed. Registration ID: <span style="color:#0056b3">${code}</span>.
+  </div>
+
+  <!-- Passenger / Student Info -->
+  <div class="section-title" style="margin-top:5px">Participant Details</div>
+  <table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Gender</th>
+            <th>College</th>
+            <th>Category</th>
+            <th>Reg. Code</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>${name}</td>
+            <td>${gender}</td>
+            <td>${college}</td>
+            <td>${category}</td>
+            <td style="font-weight:bold">${code}</td>
+        </tr>
+    </tbody>
+  </table>
+
+  <!-- Sports Inclusion -->
+  <div class="section-title">Sports Inclusion</div>
+  <table>
+    <thead>
+        <tr>
+            <th>Events Registered</th>
+            <th>Accommodation</th>
+            <th>Payment Status</th>
+            <th>Mobile</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>${sport}</td>
+            <td>${accommodation}</td>
+            <td style="color:${paymentStatus === 'PAID' ? 'green' : 'red'}; font-weight:bold">${paymentStatus}</td>
+            <td>${mobile}</td>
+        </tr>
+    </tbody>
+  </table>
+
+  <!-- Footer Codes -->
+  <div class="footer-codes">
+    <div>
+        <div class="section-title" style="margin-top:0">Total Amount</div>
+        <div style="font-size:16px; font-weight:bold; color:#0056b3">Rs. ${amount}.00</div>
+        <div style="font-size:8px; color:#666; margin-top:2px;">Includes all taxes & fees</div>
+    </div>
+    
+    <div style="text-align:center">
+        <img src="${barcodeImage}" style="height:30px;"><br>
+        <span style="font-size:8px;">${code}</span>
+    </div>
+
+    <div>
+        <img src="${qrImage}" style="height:65px;">
+    </div>
+  </div>
+
+</div>
 
 </body>
 </html>
