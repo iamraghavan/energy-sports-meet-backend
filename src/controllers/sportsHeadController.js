@@ -531,17 +531,45 @@ exports.removePlayerFromTeam = async (req, res) => {
 exports.getRegistrations = async (req, res) => {
     try {
         const sport_id = req.user.assigned_sport_id;
+        
         const registrations = await Registration.findAll({
             include: [
                 {
                     model: Sport,
                     where: { id: sport_id },
-                    required: true
+                    required: true,
+                    attributes: ['id', 'name']
+                },
+                {
+                    model: Team,
+                    as: 'Teams', // Correct alias from models/index.js
+                    required: false, // LEFT JOIN
+                    attributes: ['id', 'team_name']
                 }
-            ]
+            ],
+            order: [['created_at', 'DESC']]
         });
-        res.json(registrations);
+
+        // Transform to cleaner format
+        const result = registrations.map(reg => {
+            // 'Teams' is an array due to hasMany association.
+            // We are interested if ANY team exists for this registration (as owner).
+            // In a strict scenario, a registration might only own one team per sport, but schema allows many.
+            // We'll take the first one if exists, or check length.
+            
+            const ownedTeams = reg.Teams || [];
+            const hasTeam = ownedTeams.length > 0;
+            
+            return {
+                ...reg.toJSON(),
+                team_created: hasTeam,
+                team_info: hasTeam ? { id: ownedTeams[0].id, name: ownedTeams[0].team_name } : null
+            };
+        });
+
+        res.json(result);
     } catch (error) {
+        console.error("Error in getRegistrations:", error);
         res.status(500).json({ error: error.message });
     }
 };
