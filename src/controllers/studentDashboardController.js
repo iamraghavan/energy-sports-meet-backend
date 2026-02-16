@@ -455,7 +455,7 @@ exports.bulkDeleteTeamMembers = async (req, res) => {
         res.json({ message: 'Members deleted successfully' });
     } catch (error) {
         if (t) await t.rollback();
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: error.message }); 
     }
 };
 

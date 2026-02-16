@@ -545,3 +545,118 @@ exports.getRegistrations = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+exports.bulkAddPlayers = async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const { teamId } = req.params;
+        const { registration_ids } = req.body; // Array of Registration UUIDs
+
+        if (!Array.isArray(registration_ids) || registration_ids.length === 0) {
+            return res.status(400).json({ error: 'No players provided' });
+        }
+
+        const added = [];
+        const errors = [];
+
+        for (const regId of registration_ids) {
+            try {
+                // 1. Fetch Registration
+                const registration = await Registration.findByPk(regId, { transaction: t });
+                if (!registration) {
+                    errors.push({ id: regId, error: 'Registration not found' });
+                    continue;
+                }
+
+                // 2. Find or Create Student
+                let student = await Student.findOne({ 
+                    where: { 
+                        [Op.or]: [{ mobile: registration.mobile }, { email: registration.email }] 
+                    },
+                    transaction: t
+                });
+
+                if (!student) {
+                    student = await Student.create({
+                        name: registration.name,
+                        email: registration.email,
+                        mobile: registration.mobile,
+                        whatsapp: registration.whatsapp,
+                        city: registration.city || registration.college_city,
+                        state: registration.state || registration.college_state,
+                        college_id: registration.college_id,
+                        other_college: registration.other_college,
+                        department: registration.department,
+                        year_of_study: registration.year_of_study
+                    }, { transaction: t });
+                }
+
+                // 3. Check membership
+                const existing = await TeamMember.findOne({
+                    where: { team_id: teamId, student_id: student.id },
+                    transaction: t
+                });
+
+                if (!existing) {
+                    await TeamMember.create({
+                        team_id: teamId,
+                        student_id: student.id,
+                        role: 'Player'
+                    }, { transaction: t });
+                    added.push(student.id);
+                } else {
+                    errors.push({ id: regId, error: 'Already in team' });
+                }
+
+            } catch (err) {
+                errors.push({ id: regId, error: err.message });
+            }
+        }
+
+        await t.commit();
+        res.status(201).json({ message: 'Bulk add processed', added, errors });
+
+    } catch (error) {
+        if (t) await t.rollback();
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.updatePlayerDetails = async (req, res) => {
+    try {
+        const { teamId, studentId } = req.params;
+        const updates = req.body; // { role, sport_role }
+
+        // Note: studentId in param usually matches Registration ID in frontend lists, 
+        // BUT TeamMember links to Student ID.
+        // If frontend passes Registration ID, we must resolve Student ID first.
+        // Ideally frontend passes Student ID if known, or we lookup.
+        // As per bulkAdd, we linked Registration -> Student.
+        
+        // Let's assume studentId param IS the student.id (UUID) if accessing team members.
+        // OR if accessing from registration list, it is reg.id.
+        // Update logic: find TeamMember by team_id and student_id.
+        
+        // If the ID passed is a Registration ID, we need to find the student.
+        // Try finding by PK as Student first?
+        let member = await TeamMember.findOne({ where: { team_id: teamId, student_id: studentId } });
+        
+        if (!member) {
+             // Fallback: maybe studentId is a Registration ID?
+             const reg = await Registration.findByPk(studentId);
+             if (reg) {
+                 const student = await Student.findOne({ where: { email: reg.email } });
+                 if (student) {
+                     member = await TeamMember.findOne({ where: { team_id: teamId, student_id: student.id } });
+                 }
+             }
+        }
+
+        if (!member) return res.status(404).json({ error: 'Team member not found' });
+
+        await member.update(updates);
+        res.json({ message: 'Player updated', member });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
