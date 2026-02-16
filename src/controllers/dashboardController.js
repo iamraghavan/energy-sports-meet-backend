@@ -92,8 +92,8 @@ exports.getDashboardStats = async (req, res) => {
                 include: [{ model: Sport, where: { id: assigned_sport_id }, attributes: [] }],
                 where: { status: 'approved' },
                 limit: 5,
-                order: [['updated_at', 'DESC']],
-                attributes: ['id', 'name', 'registration_code', 'updated_at']
+                order: [['created_at', 'DESC']],
+                attributes: ['id', 'name', 'registration_code', 'created_at']
             });
 
             stats = {

@@ -46,8 +46,8 @@ exports.getOverviewStats = async (req, res) => {
             include: [{ model: Sport, where: { id: sport_id }, attributes: [] }],
             where: { status: 'approved' },
             limit: 5,
-            order: [['updated_at', 'DESC']],
-            attributes: ['id', 'name', 'registration_code', 'updated_at']
+            order: [['created_at', 'DESC']],
+            attributes: ['id', 'name', 'registration_code', 'created_at']
         });
 
         res.json({
@@ -115,6 +115,34 @@ exports.getAnalytics = async (req, res) => {
 // ==========================================
 // MATCH MANAGEMENT
 // ==========================================
+
+// @desc    Get All Matches for Assigned Sport
+// @access  Private (Sports Head)
+exports.getMatches = async (req, res) => {
+    try {
+        const sport_id = req.user.assigned_sport_id;
+        const { status } = req.query; // Optional filter: scheduled, live, completed
+
+        let whereClause = { sport_id };
+        if (status) {
+            whereClause.status = status;
+        }
+
+        const matches = await Match.findAll({
+            where: whereClause,
+            include: [
+                { model: Team, as: 'TeamA', attributes: ['id', 'team_name'] },
+                { model: Team, as: 'TeamB', attributes: ['id', 'team_name'] },
+                { model: Sport, attributes: ['id', 'name'] }
+            ],
+            order: [['start_time', 'ASC']]
+        });
+
+        res.json(matches);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
 // @desc    Schedule a new match
 // @access  Private (Sports Head/Admin)
@@ -330,11 +358,13 @@ exports.getAllStudents = async (req, res) => {
         
         // Fetch from Registration, not Student
         const registrations = await Registration.findAll({
-            where: { sport_id, status: 'approved' },
+            // Fix: Remove sport_id from top-level where clause as it's not a column
+            where: { status: 'approved' }, 
             include: [
                 {
                     model: Sport, 
-                    where: { id: sport_id }
+                    where: { id: sport_id },
+                    required: true
                 },
                 { model: Team, as: 'Teams', attributes: ['id', 'team_name'] }
             ]

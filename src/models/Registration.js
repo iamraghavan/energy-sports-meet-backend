@@ -142,6 +142,8 @@ const Registration = sequelize.define('Registration', {
     }
 }, {
     timestamps: true,
+    createdAt: 'created_at', // Map createdAt to created_at column
+    updatedAt: false,        // Create explicit mapping if column exists, else false. Assuming column missing from error.
     tableName: 'registrations'
 });
 

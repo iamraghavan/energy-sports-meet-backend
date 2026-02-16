@@ -13,6 +13,7 @@ router.get('/stats', sportsHeadController.getOverviewStats);
 router.get('/analytics', sportsHeadController.getAnalytics);
 
 // Match Routes (Shared Logic with Emails/Sockets)
+router.get('/matches', sportsHeadController.getMatches);
 router.post('/matches/schedule', matchController.createMatch);
 router.patch('/matches/:matchId', matchController.updateMatchDetails);
 
