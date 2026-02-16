@@ -390,12 +390,67 @@ exports.getAllStudents = async (req, res) => {
 // @desc    Add player to team
 // @access  Private (Sports Head)
 exports.addPlayerToTeam = async (req, res) => {
-    // This is complex because we need to link a Registration (person) to a Team (structure).
-    // But Team Members are Students.
-    // If Admin wants to add a "Registration" to a Team, we might need to create a Student record first?
+    const t = await sequelize.transaction();
     try {
-        res.status(501).json({ message: 'Manual player addition via Sports Head console not fully implemented due to data model constraints.' });
+        const { teamId, studentId } = req.params; // studentId here is actually Registration ID passed from frontend
+        // Note: The frontend lists "Registrations". When dragging/adding, it passes Registration ID.
+        // But TeamMember table requires a valid existing 'Student' record.
+        
+        // 1. Fetch Registration
+        const registration = await Registration.findByPk(studentId, { transaction: t });
+        if (!registration) {
+            await t.rollback();
+            return res.status(404).json({ error: 'Registration not found' });
+        }
+
+        // 2. Find or Create Student Record
+        // (to satisfy Foreign Key constraint in TeamMember)
+        let student = await Student.findOne({ 
+            where: { 
+                [Op.or]: [{ mobile: registration.mobile }, { email: registration.email }] 
+            },
+            transaction: t
+        });
+
+        if (!student) {
+            student = await Student.create({
+                name: registration.name,
+                email: registration.email,
+                mobile: registration.mobile,
+                whatsapp: registration.whatsapp,
+                city: registration.city || registration.college_city,
+                state: registration.state || registration.college_state,
+                college_id: registration.college_id,
+                other_college: registration.other_college,
+                department: registration.department,
+                year_of_study: registration.year_of_study
+            }, { transaction: t });
+        }
+
+        // 3. Check if already in this team
+        const existingMember = await TeamMember.findOne({
+            where: { team_id: teamId, student_id: student.id },
+            transaction: t
+        });
+
+        if (existingMember) {
+            await t.rollback();
+            return res.status(400).json({ error: 'Player already in this team' });
+        }
+
+        // 4. Create Team Member Link
+        const teamMember = await TeamMember.create({
+            team_id: teamId,
+            student_id: student.id,
+            role: 'Player',
+            sport_role: req.body.sport_role || null // Optional role details
+        }, { transaction: t });
+
+        await t.commit();
+        res.status(201).json({ message: 'Player added to team', teamMember });
+
     } catch (error) {
+        if (t) await t.rollback();
         res.status(500).json({ error: error.message });
     }
 };
