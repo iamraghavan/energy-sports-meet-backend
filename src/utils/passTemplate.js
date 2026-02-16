@@ -80,7 +80,7 @@ exports.generatePassHTML = async (registration) => {
 <style>
 /* PRINT SETTINGS */
 @page {
-  size: A5 landscape; /* 210mm x 148mm */
+  size: A4 portrait; /* Print on standard A4 */
   margin: 0;
 }
 
@@ -93,19 +93,21 @@ body {
 }
 
 .page {
+  /* Strictly A5 Landscape dimensions */
   width: 210mm;
   height: 148mm;
-  margin: 0 auto;
+  /* margin: 0 auto; Removed auto margin to stick to top */
   box-sizing: border-box;
   padding: 10mm;
   display: flex;
   flex-direction: column;
   position: relative;
   background: white;
+  border-bottom: 2px dashed #ccc; /* Cut line visualization */
 }
 
 @media print {
-    .page { border: none; width: 100%; height: 100%; }
+    .page { border-bottom: none; } /* Optional: remove border when printing if preferred */
 }
 
 /* HEADER */
