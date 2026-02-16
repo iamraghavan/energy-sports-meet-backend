@@ -32,7 +32,7 @@ exports.requestOTP = async (req, res) => {
         // Find the LATEST registration for this identifier
         let registration = await Registration.findOne({
             where: isEmail ? { email: identifier } : { mobile: identifier },
-            order: [['createdAt', 'DESC']]
+            order: [['created_at', 'DESC']]
         });
 
         if (!registration) {
@@ -100,7 +100,7 @@ exports.verifyOTP = async (req, res) => {
                     as: 'Teams' // Re-check association in models/index.js if needed. It was Registration.hasMany(Team, { foreignKey: 'registration_id' })
                 }
             ],
-            order: [['createdAt', 'DESC']]
+            order: [['created_at', 'DESC']]
         });
 
         if (!registration || registration.otp !== otp || new Date() > registration.otp_expiry) {
