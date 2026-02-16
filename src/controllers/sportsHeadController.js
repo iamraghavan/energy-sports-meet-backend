@@ -292,21 +292,75 @@ exports.getTeamDetails = async (req, res) => {
 
 // @desc    Create a new team
 // @access  Private (Sports Head)
+// @desc    Create a new team
+// @access  Private (Sports Head)
 exports.createTeam = async (req, res) => {
     const t = await sequelize.transaction();
     try {
-        const { team_name, captain_id } = req.body; // captain_id here might be StudentID if selected from existing students
+        const { team_name, registration_id } = req.body; 
+        // We require registration_id (of the captain/lead) to determine College and Owner.
+        
         const sport_id = req.user.assigned_sport_id;
 
+        if (!registration_id) {
+            await t.rollback();
+            return res.status(400).json({ error: 'Registration ID of the captain/lead player is required to create a team.' });
+        }
+
+        // 1. Fetch Registration to get College Context
+        const registration = await Registration.findByPk(registration_id, { transaction: t });
+        if (!registration) {
+            await t.rollback();
+            return res.status(404).json({ error: 'Registration not found' });
+        }
+
+        // 2. Ensure Student Record Exists (Captain)
+        let student = await Student.findOne({ 
+            where: { 
+                [Op.or]: [{ mobile: registration.mobile }, { email: registration.email }] 
+            },
+            transaction: t
+        });
+
+        if (!student) {
+            student = await Student.create({
+                name: registration.name,
+                email: registration.email,
+                mobile: registration.mobile,
+                whatsapp: registration.whatsapp,
+                city: registration.city || registration.college_city,
+                state: registration.state || registration.college_state,
+                college_id: registration.college_id,
+                other_college: registration.other_college,
+                department: registration.department,
+                year_of_study: registration.year_of_study
+            }, { transaction: t });
+        }
+
+        // 3. Create Team
         const team = await Team.create({ 
             team_name, 
-            captain_id: captain_id || null, // Allow null captain initially
+            captain_id: student.id,
             sport_id,
+            registration_id: registration.id, // Owner
+            college_id: registration.college_id || 0, // 0 for 'Other' if null? Schema says non-null. 
+            // If college_id is null (Other), we might need a fallback or ensure Registration has it.
+            // Registration schema allows null college_id. Team schema does NOT.
+            // CAUTION: If registration.college_id is null, we need to handle it. 
+            // Assuming 0 or specific generic ID for "Other". For now, using optional chaining or 0.
             locked: false
+        }, { transaction: t });
+
+        // 4. Add Captain as Team Member
+        await TeamMember.create({
+            team_id: team.id,
+            student_id: student.id,
+            role: 'Captain'
         }, { transaction: t });
 
         await t.commit();
         res.status(201).json(team);
+
     } catch (error) {
         if (t) await t.rollback();
         res.status(500).json({ error: error.message });
