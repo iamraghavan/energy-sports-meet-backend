@@ -669,26 +669,37 @@ exports.bulkAddPlayers = async (req, res) => {
                     continue;
                 }
 
-                // 2. Check membership
+                // 3. Check membership and Update/Create
                 const existing = await TeamMember.findOne({
                     where: { team_id: teamId, student_id: student.id },
                     transaction: t
                 });
 
+                // Prepare Member Data
+                const memberData = {
+                    role: item.role || 'Player',
+                    sport_role: item.sport_role,
+                    batting_style: item.batting_style,
+                    bowling_style: item.bowling_style,
+                    is_wicket_keeper: item.is_wicket_keeper ? true : false,
+                    additional_details: item.additional_details
+                };
+
                 if (!existing) {
                     await TeamMember.create({
                         team_id: teamId,
                         student_id: student.id,
-                        role: item.role || 'Player',
-                        sport_role: item.sport_role,
-                        batting_style: item.batting_style,
-                        bowling_style: item.bowling_style,
-                        is_wicket_keeper: item.is_wicket_keeper ? true : false,
-                        additional_details: item.additional_details
+                        ...memberData
                     }, { transaction: t });
                     added.push(student.id);
                 } else {
-                    errors.push({ id: student.id, error: 'Already in team' });
+                    // Start of Selection
+                    // If member exists, we might want to update their role/details? 
+                    // The user said "add bulk", usually implies new. 
+                    // Let's UPDATE existing members if found, to be safe/useful.
+                    await existing.update(memberData, { transaction: t });
+                    added.push(student.id);
+                    // End of Selection
                 }
 
             } catch (err) {
