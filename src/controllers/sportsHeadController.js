@@ -688,3 +688,126 @@ exports.updatePlayerDetails = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// @desc    Import Team Members from Excel JSON
+// @access  Private (Sports Head)
+exports.importTeamMembers = async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        // Payload: Array of objects matching Excel columns
+        // [{ team_id, student_id, role, sport_role, batting_style, bowling_style, is_wicket_keeper, additional_details }]
+        const { players } = req.body;
+        const sport_id = req.user.assigned_sport_id;
+
+        if (!Array.isArray(players) || players.length === 0) {
+            await t.rollback();
+            return res.status(400).json({ error: 'No player data provided' });
+        }
+
+        const stats = { added: 0, updated: 0, errors: [] };
+
+        for (const row of players) {
+            try {
+                const { team_id, student_id, role, sport_role, batting_style, bowling_style, is_wicket_keeper, additional_details } = row;
+
+                if (!team_id || !student_id) {
+                    stats.errors.push({ row, error: 'Missing team_id or student_id' });
+                    continue;
+                }
+
+                // 1. Validate Team (Must belong to assigned sport)
+                const team = await Team.findOne({ where: { id: team_id, sport_id }, transaction: t });
+                if (!team) {
+                    stats.errors.push({ student_id, error: `Team ${team_id} not found or mismatch sport` });
+                    continue;
+                }
+
+                // 2. Resolve Student
+                // student_id could be UUID (Student), UUID (Registration), or Registration Code
+                let student = null;
+                
+                // Try Registration Code first (most likely for "Excel" from user perspective)
+                let registration = await Registration.findOne({ where: { registration_code: student_id }, transaction: t });
+                
+                if (!registration) {
+                    // Try UUID lookup (Registration ID)
+                    registration = await Registration.findByPk(student_id, { transaction: t });
+                }
+
+                if (registration) {
+                    // Find/Create Student from Registration
+                   student = await Student.findOne({ 
+                        where: { [Op.or]: [{ mobile: registration.mobile }, { email: registration.email }] },
+                        transaction: t
+                    });
+                    if (!student) {
+                        student = await Student.create({
+                            name: registration.name,
+                            email: registration.email,
+                            mobile: registration.mobile,
+                            whatsapp: registration.whatsapp,
+                            city: registration.college_city,
+                            state: registration.college_state,
+                            college_id: registration.college_id,
+                            department: registration.department,
+                            year_of_study: registration.year_of_study
+                        }, { transaction: t });
+                    }
+                } else {
+                    // Try UUID lookup (Student ID) direclty
+                    student = await Student.findByPk(student_id, { transaction: t });
+                }
+
+                if (!student) {
+                    stats.errors.push({ student_id, error: 'Student/Registration not found' });
+                    continue;
+                }
+
+                // 3. Create or Update TeamMember
+                const existingMember = await TeamMember.findOne({
+                    where: { team_id: team.id, student_id: student.id },
+                    transaction: t
+                });
+
+                // Normalize Boolean
+                let isWK = false;
+                if (typeof is_wicket_keeper === 'string') {
+                    isWK = ['yes', 'true', '1'].includes(is_wicket_keeper.toLowerCase());
+                } else {
+                    isWK = !!is_wicket_keeper;
+                }
+
+                const memberData = {
+                    role: role || 'Player',
+                    sport_role: sport_role,
+                    batting_style: batting_style,
+                    bowling_style: bowling_style,
+                    is_wicket_keeper: isWK,
+                    additional_details: additional_details
+                };
+
+                if (existingMember) {
+                    await existingMember.update(memberData, { transaction: t });
+                    stats.updated++;
+                } else {
+                    await TeamMember.create({
+                        team_id: team.id,
+                        student_id: student.id,
+                        ...memberData
+                    }, { transaction: t });
+                    stats.added++;
+                }
+
+            } catch (rowErr) {
+                stats.errors.push({ row, error: rowErr.message });
+            }
+        }
+
+        await t.commit();
+        res.json({ message: 'Import processing completed', stats });
+
+    } catch (error) {
+        if (t) await t.rollback();
+        res.status(500).json({ error: error.message });
+    }
+};
