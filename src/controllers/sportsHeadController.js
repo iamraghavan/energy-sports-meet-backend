@@ -577,48 +577,99 @@ exports.bulkAddPlayers = async (req, res) => {
     const t = await sequelize.transaction();
     try {
         const { teamId } = req.params;
-        const { registration_ids } = req.body; // Array of Registration UUIDs
+        // Accept either 'players' (Object Array) or 'registration_ids' (ID Array - Legacy)
+        const { players, registration_ids } = req.body; 
 
-        if (!Array.isArray(registration_ids) || registration_ids.length === 0) {
+        let items = [];
+        
+        // Normalize input to array of objects
+        if (Array.isArray(players) && players.length > 0) {
+            items = players;
+        } else if (Array.isArray(registration_ids) && registration_ids.length > 0) {
+            items = registration_ids.map(id => ({ student_id: id })); // Map legacy
+        }
+
+        if (items.length === 0) {
+            await t.rollback();
             return res.status(400).json({ error: 'No players provided' });
         }
 
         const added = [];
         const errors = [];
+        const sport_id = req.user.assigned_sport_id;
 
-        for (const regId of registration_ids) {
+        // Verify Team
+        const team = await Team.findOne({ where: { id: teamId, sport_id }, transaction: t });
+        if (!team) {
+            await t.rollback();
+            return res.status(404).json({ error: 'Team not found or mismatch sport' });
+        }
+
+        for (const item of items) {
             try {
-                // 1. Fetch Registration
-                const registration = await Registration.findByPk(regId, { transaction: t });
-                if (!registration) {
-                    errors.push({ id: regId, error: 'Registration not found' });
+                // item can be { name, mobile, email }, { student_id: 'REG-...' }, or just { student_id: UUID }
+                let student = null;
+
+                // 1. Resolve Student
+                if (item.student_id) {
+                    // Look up by ID/Code
+                    let reg = await Registration.findOne({ where: { registration_code: item.student_id }, transaction: t });
+                    if (!reg) reg = await Registration.findByPk(item.student_id, { transaction: t });
+                    
+                    if (reg) {
+                        // Find/Create Student from Registration
+                        student = await Student.findOne({ 
+                            where: { [Op.or]: [{ mobile: reg.mobile }, { email: reg.email }] },
+                            transaction: t 
+                        });
+                        if (!student) {
+                            student = await Student.create({
+                                name: reg.name,
+                                email: reg.email,
+                                mobile: reg.mobile,
+                                whatsapp: reg.whatsapp,
+                                city: reg.college_city,
+                                state: reg.college_state,
+                                college_id: reg.college_id,
+                                department: reg.department,
+                                year_of_study: reg.year_of_study
+                            }, { transaction: t });
+                        }
+                    } else {
+                        // Try Student UUID directly
+                        student = await Student.findByPk(item.student_id, { transaction: t });
+                    }
+                } else if (item.name && (item.mobile || item.email)) {
+                    // Look up by Mobile/Email (Direct Check)
+                    const whereClause = [];
+                    if (item.mobile) whereClause.push({ mobile: item.mobile });
+                    if (item.email) whereClause.push({ email: item.email });
+
+                    student = await Student.findOne({ 
+                        where: { [Op.or]: whereClause },
+                        transaction: t 
+                    });
+
+                    // If not found, Create New Student directly
+                    if (!student) {
+                        student = await Student.create({
+                            name: item.name,
+                            email: item.email || null,
+                            mobile: item.mobile || null,
+                            city: item.city || 'Unknown',
+                            state: item.state || 'Unknown',
+                            college_id: item.college_id || null, // Optional
+                            other_college: item.other_college || null
+                        }, { transaction: t });
+                    }
+                }
+
+                if (!student) {
+                    errors.push({ item, error: 'Student could not be resolved or created (Missing Name/Mobile)' });
                     continue;
                 }
 
-                // 2. Find or Create Student
-                let student = await Student.findOne({ 
-                    where: { 
-                        [Op.or]: [{ mobile: registration.mobile }, { email: registration.email }] 
-                    },
-                    transaction: t
-                });
-
-                if (!student) {
-                    student = await Student.create({
-                        name: registration.name,
-                        email: registration.email,
-                        mobile: registration.mobile,
-                        whatsapp: registration.whatsapp,
-                        city: registration.city || registration.college_city,
-                        state: registration.state || registration.college_state,
-                        college_id: registration.college_id,
-                        other_college: registration.other_college,
-                        department: registration.department,
-                        year_of_study: registration.year_of_study
-                    }, { transaction: t });
-                }
-
-                // 3. Check membership
+                // 2. Check membership
                 const existing = await TeamMember.findOne({
                     where: { team_id: teamId, student_id: student.id },
                     transaction: t
@@ -628,15 +679,20 @@ exports.bulkAddPlayers = async (req, res) => {
                     await TeamMember.create({
                         team_id: teamId,
                         student_id: student.id,
-                        role: 'Player'
+                        role: item.role || 'Player',
+                        sport_role: item.sport_role,
+                        batting_style: item.batting_style,
+                        bowling_style: item.bowling_style,
+                        is_wicket_keeper: item.is_wicket_keeper ? true : false,
+                        additional_details: item.additional_details
                     }, { transaction: t });
                     added.push(student.id);
                 } else {
-                    errors.push({ id: regId, error: 'Already in team' });
+                    errors.push({ id: student.id, error: 'Already in team' });
                 }
 
             } catch (err) {
-                errors.push({ id: regId, error: err.message });
+                errors.push({ item, error: err.message });
             }
         }
 
@@ -723,43 +779,90 @@ exports.importTeamMembers = async (req, res) => {
                 }
 
                 // 2. Resolve Student
-                // student_id could be UUID (Student), UUID (Registration), or Registration Code
                 let student = null;
-                
-                // Try Registration Code first (most likely for "Excel" from user perspective)
-                let registration = await Registration.findOne({ where: { registration_code: student_id }, transaction: t });
-                
-                if (!registration) {
-                    // Try UUID lookup (Registration ID)
-                    registration = await Registration.findByPk(student_id, { transaction: t });
-                }
 
-                if (registration) {
-                    // Find/Create Student from Registration
-                   student = await Student.findOne({ 
-                        where: { [Op.or]: [{ mobile: registration.mobile }, { email: registration.email }] },
-                        transaction: t
-                    });
-                    if (!student) {
-                        student = await Student.create({
-                            name: registration.name,
-                            email: registration.email,
-                            mobile: registration.mobile,
-                            whatsapp: registration.whatsapp,
-                            city: registration.college_city,
-                            state: registration.college_state,
-                            college_id: registration.college_id,
-                            department: registration.department,
-                            year_of_study: registration.year_of_study
-                        }, { transaction: t });
+                if (student_id) {
+                    // Case A: ID/Code Provided
+                     // Try Registration Code
+                    let registration = await Registration.findOne({ where: { registration_code: student_id }, transaction: t });
+                    if (!registration) {
+                        // Try UUID (Registration ID)
+                        registration = await Registration.findByPk(student_id, { transaction: t });
                     }
-                } else {
-                    // Try UUID lookup (Student ID) direclty
-                    student = await Student.findByPk(student_id, { transaction: t });
+                    if (registration) {
+                        // Find/Create Student from Registration
+                        student = await Student.findOne({ 
+                            where: { [Op.or]: [{ mobile: registration.mobile }, { email: registration.email }] },
+                            transaction: t
+                        });
+                        if (!student) {
+                            student = await Student.create({
+                                name: registration.name,
+                                email: registration.email,
+                                mobile: registration.mobile,
+                                whatsapp: registration.whatsapp,
+                                city: registration.college_city,
+                                state: registration.college_state,
+                                college_id: registration.college_id,
+                                department: registration.department,
+                                year_of_study: registration.year_of_study
+                            }, { transaction: t });
+                        }
+                    } else {
+                        // Try UUID (Student ID) directly
+                        student = await Student.findByPk(student_id, { transaction: t });
+                    }
+                } else if (row.name && (row.mobile || row.email)) {
+                    // Case B: Direct Details Provided (No ID)
+                    // Check if Student exists
+                    const whereClause = [];
+                    if (row.mobile) whereClause.push({ mobile: row.mobile });
+                    if (row.email) whereClause.push({ email: row.email });
+
+                    student = await Student.findOne({ 
+                        where: { [Op.or]: whereClause },
+                        transaction: t 
+                    });
+
+                    // If not found in Student, check Registration to be safe?
+                    // Actually, if they are registered, they should be in Student table if they were ever processed.
+                    // But maybe they registered but no Student record created yet?
+                    if (!student) {
+                        const registration = await Registration.findOne({
+                            where: { [Op.or]: whereClause },
+                            transaction: t
+                        });
+
+                        if (registration) {
+                             student = await Student.create({
+                                name: registration.name,
+                                email: registration.email,
+                                mobile: registration.mobile,
+                                whatsapp: registration.whatsapp,
+                                city: registration.college_city,
+                                state: registration.college_state,
+                                college_id: registration.college_id,
+                                department: registration.department,
+                                year_of_study: registration.year_of_study
+                            }, { transaction: t });
+                        } else {
+                            // Create NEW Student (Direct Entry)
+                            // We need minimal fields. College?
+                            // Assuming 'Other' or null if not provided.
+                            student = await Student.create({
+                                name: row.name,
+                                email: row.email || null,
+                                mobile: row.mobile || null,
+                                city: 'Unknown', // Default
+                                state: 'Unknown', // Default
+                                college_id: null // Independent/Other
+                            }, { transaction: t });
+                        }
+                    }
                 }
 
                 if (!student) {
-                    stats.errors.push({ student_id, error: 'Student/Registration not found' });
+                    stats.errors.push({ row, error: 'Student could not be resolved or created (Missing Name/Mobile)' });
                     continue;
                 }
 
