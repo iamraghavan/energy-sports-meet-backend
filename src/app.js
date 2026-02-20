@@ -9,6 +9,13 @@ const logger = require('./utils/logger');
 require('dotenv').config();
 
 const app = express();
+const { v4: uuidv4 } = require('uuid');
+
+// Assign a unique Request ID to every incoming request
+app.use((req, res, next) => {
+    req.id = uuidv4();
+    next();
+});
 
 // Middlewares
 app.use(statusMonitor()); // Monitoring at /status
@@ -18,33 +25,25 @@ app.use(helmet({
 }));
 app.use(compression());
 app.use(cors({
-    origin: (origin, callback) => {
-        // Debugging: Log incoming origins to console
-        if (origin) logger.info(`CORS Request from: ${origin}`);
-        
-        // Allow requests with no origin (like mobile apps)
-        if (!origin) return callback(null, true);
-        
-        // Allow all origins with credentials: true
-        // For security in production, you'd want to check against a whitelist
-        callback(null, true);
-    },
+    origin: true, // Echoes the request origin, allowing all origins with credentials
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+    allowedHeaders: ['*'] // Allow all custom headers
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Custom Morgan Format for deep troubleshooting
-const morganFormat = ':remote-addr - :method :url :status :res[content-length] - :response-time ms ":referrer" ":user-agent"';
+// Custom Morgan Format for deep troubleshooting (Including Request ID)
+morgan.token('id', (req) => req.id);
+const morganFormat = '[:id] :remote-addr - :method :url :status :res[content-length] - :response-time ms ":referrer" ":user-agent"';
 app.use(morgan(morganFormat, { stream: logger.stream }));
 
 // Enhanced Request Debugging Middleware
 app.use((req, res, next) => {
-    // Log all POST/PUT/DELETE attempts with full context
+    // Log all mutation attempts with full context and Request ID
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-        logger.info(`🌐 [REQ] ${req.method} ${req.url}`, {
+        logger.info(`🌐 [REQ] ${req.id} | ${req.method} ${req.url}`, {
+            id: req.id,
             ip: req.ip,
             query: req.query,
             body: req.body,

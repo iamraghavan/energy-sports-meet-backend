@@ -24,6 +24,7 @@ winston.addColors(colors);
 // Define the format of the logs
 const format = winston.format.combine(
     winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
+    winston.format.errors({ stack: true }), // Capture full stack traces
     winston.format.colorize({ all: true }),
     winston.format.printf(
         (info) => {

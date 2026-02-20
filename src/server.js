@@ -26,14 +26,10 @@ const io = new Server(server, {
     maxHttpBufferSize: 1e6, // 1 MB limit per message
     
     cors: {
-        // Fix for "Access-Control-Allow-Origin" with Credentials
-        origin: (origin, callback) => {
-            if (!origin) return callback(null, true);
-            callback(null, true);
-        },
+        origin: true, // Echo origin to allow credentials
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
         credentials: true,
-        allowedHeaders: ["Content-Type", "Authorization"]
+        allowedHeaders: ["*"] // Allow all custom headers
     }
 });
 
