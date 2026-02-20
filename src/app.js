@@ -35,7 +35,24 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan('combined', { stream: logger.stream })); // Use Winston for HTTP logging
+
+// Custom Morgan Format for deep troubleshooting
+const morganFormat = ':remote-addr - :method :url :status :res[content-length] - :response-time ms ":referrer" ":user-agent"';
+app.use(morgan(morganFormat, { stream: logger.stream }));
+
+// Enhanced Request Debugging Middleware
+app.use((req, res, next) => {
+    // Log all POST/PUT/DELETE attempts with full context
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+        logger.info(`🌐 [REQ] ${req.method} ${req.url}`, {
+            ip: req.ip,
+            query: req.query,
+            body: req.body,
+            userAgent: req.get('user-agent')
+        });
+    }
+    next();
+});
 
 // Rate Limiting
 const limiter = rateLimit({

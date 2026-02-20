@@ -1,6 +1,7 @@
 const { Match, sequelize } = require('../models');
 const logger = require('../utils/logger');
 const scoringService = require('../services/scoringService');
+const matchService = require('../services/matchService');
 
 module.exports = (io) => {
     io.on('connection', (socket) => {
@@ -9,14 +10,14 @@ module.exports = (io) => {
         // 1. Join Specific Match Room (Detailed View)
         socket.on('join_match', (matchId) => {
             socket.join(matchId);
-            logger.info(`🏠 Socket ${socket.id} joined match room: ${matchId}`);
+            logger.info(`🏠 Socket joined match room`, { socketId: socket.id, matchId });
         });
 
         // 2. Join Overview Room (Dashboard View)
         // Client should emit 'join_overview' when on the main list page
         socket.on('join_overview', () => {
             socket.join('live_overview');
-            logger.info(`📊 Socket ${socket.id} joined live_overview`);
+            logger.info(`📊 Socket joined live_overview`, { socketId: socket.id });
         });
 
         socket.on('leave_match', (matchId) => {
@@ -46,7 +47,7 @@ module.exports = (io) => {
                 // Broadcast to overview
                 io.to('live_overview').emit('overview_update', { matchId, score: match.score_details });
 
-                logger.info(`✅ [Socket] Cricket score updated for match ${matchId}`);
+                logger.info(`✅ [Socket] Cricket score updated`, { matchId, socketId: socket.id, payload });
                 if (callback) callback({ status: 'ok', matchId });
 
             } catch (error) {
@@ -68,12 +69,61 @@ module.exports = (io) => {
                 io.to(matchId).emit('score_updated', { matchId, score: match.score_details, event: newEvent });
                 io.to('live_overview').emit('overview_update', { matchId, score: match.score_details });
 
-                logger.info(`✅ [Socket] Standard score updated for match ${matchId}`);
+                logger.info(`✅ [Socket] Standard score updated`, { matchId, socketId: socket.id, payload });
                 if (callback) callback({ status: 'ok', matchId });
 
             } catch (error) {
                 if (t) await t.rollback();
                 logger.error(`❌ [Socket] Standard scoring error: ${error.message}`);
+                if (callback) callback({ status: 'error', message: error.message });
+            }
+        });
+
+        // 5. Match Status Updates (Start/End Match)
+        socket.on('update_match_status', async (payload, callback) => {
+            const { matchId } = payload;
+            try {
+                const match = await matchService.updateMatchStatus(matchId, payload);
+
+                // Broadcast to match room
+                io.to(matchId).emit('score_updated', {
+                    matchId,
+                    scoreDetails: match.score_details,
+                    status: match.status,
+                    winnerId: match.winner_id
+                });
+
+                // Broadcast to overview
+                io.to('live_overview').emit('overview_update', {
+                    matchId,
+                    sportId: match.sport_id,
+                    scoreSummary: match.score_details,
+                    status: match.status
+                });
+
+                logger.info(`✅ [Socket] Match status updated`, { matchId, status: match.status, socketId: socket.id, payload });
+                if (callback) callback({ status: 'ok', matchId });
+
+            } catch (error) {
+                logger.error(`❌ [Socket] Status update error: ${error.message}`);
+                if (callback) callback({ status: 'error', message: error.message });
+            }
+        });
+
+        // 6. Lineup Management
+        socket.on('update_lineup', async (payload, callback) => {
+            const { matchId, action, student_id } = payload;
+            try {
+                await matchService.updateLineup(matchId, payload);
+
+                // Broadcast to match room
+                io.to(matchId).emit('lineup_updated', { matchId, action, student_id });
+
+                logger.info(`✅ [Socket] Lineup updated`, { matchId, action, student_id, socketId: socket.id, payload });
+                if (callback) callback({ status: 'ok', matchId });
+
+            } catch (error) {
+                logger.error(`❌ [Socket] Lineup update error: ${error.message}`);
                 if (callback) callback({ status: 'error', message: error.message });
             }
         });

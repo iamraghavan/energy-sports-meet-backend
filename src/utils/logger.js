@@ -26,7 +26,11 @@ const format = winston.format.combine(
     winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
     winston.format.colorize({ all: true }),
     winston.format.printf(
-        (info) => `${info.timestamp} ${info.level}: ${info.message}`,
+        (info) => {
+            const { timestamp, level, message, ...metadata } = info;
+            let metaString = Object.keys(metadata).length ? ` | ${JSON.stringify(metadata)}` : '';
+            return `${timestamp} ${level}: ${message}${metaString}`;
+        }
     ),
 );
 
@@ -56,7 +60,7 @@ try {
 
 // Create the logger instance
 const logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'development' ? 'debug' : 'warn',
+    level: 'info', // Default to info for better debugging visibility
     levels,
     format,
     transports,
