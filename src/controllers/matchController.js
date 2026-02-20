@@ -251,9 +251,16 @@ exports.updateScoreCricket = async (req, res) => {
         const extraRuns = (extras || 0);
         const totalBallRuns = runsScored + extraRuns;
 
+        // Debug Log
+        logger.info(`🏏 Cricket Step: Updating Score for Team ${batting_team_id} | Runs: ${totalBallRuns}`);
+
         // 2. Update Batting Team Score
-        let score = match.score_details || {}; // Structure: { teamA: { runs: 120, wickets: 2, overs: 14.2 } }
-        if (!score[batting_team_id]) {
+        // Ensure score_details is a valid object before accessing nested properties
+        let score = (match.score_details && typeof match.score_details === 'object' && !Array.isArray(match.score_details)) 
+            ? { ...match.score_details } 
+            : {};
+            
+        if (!score[batting_team_id] || typeof score[batting_team_id] !== 'object') {
             score[batting_team_id] = { runs: 0, wickets: 0, overs: 0.0 };
         }
 
@@ -298,7 +305,11 @@ exports.updateScoreCricket = async (req, res) => {
         if (striker_id) {
             const bats = await MatchPlayer.findOne({ where: { match_id: matchId, student_id: striker_id }, transaction: t });
             if (bats) {
-                let s = bats.performance_stats || { runs: 0, balls: 0, fours: 0, sixes: 0 };
+                // Ensure performance_stats is a valid object
+                let s = (bats.performance_stats && typeof bats.performance_stats === 'object' && !Array.isArray(bats.performance_stats))
+                    ? { ...bats.performance_stats }
+                    : { runs: 0, balls: 0, fours: 0, sixes: 0 };
+                    
                 // Only count ball faced if it's not a Wide (usually)
                 if (extra_type !== 'wide') s.balls = (s.balls || 0) + 1;
                 
@@ -316,7 +327,11 @@ exports.updateScoreCricket = async (req, res) => {
         if (bowler_id) {
             const bowl = await MatchPlayer.findOne({ where: { match_id: matchId, student_id: bowler_id }, transaction: t });
             if (bowl) {
-                let s = bowl.performance_stats || { overs: 0, runs_conceded: 0, wickets: 0 };
+                // Ensure performance_stats is a valid object
+                let s = (bowl.performance_stats && typeof bowl.performance_stats === 'object' && !Array.isArray(bowl.performance_stats))
+                    ? { ...bowl.performance_stats }
+                    : { overs: 0, runs_conceded: 0, wickets: 0 };
+                    
                 // Update runs conceded (Bowler usually penalised for output runs + wides/noballs, but not byes)
                 // Simplified:
                 const bowlerRuns = runsScored + (['wide', 'noball'].includes(extra_type) ? extraRuns : 0);
