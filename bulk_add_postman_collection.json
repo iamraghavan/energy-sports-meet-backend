@@ -1,0 +1,60 @@
+{
+	"info": {
+		"_postman_id": "bulk-add-example-v1",
+		"name": "Energy Sports Meet - Bulk Add Players",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Bulk Add Players (Mixed Mode)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{YOUR_TOKEN_HERE}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"players\": [\n        {\n            \"name\": \"MS Dhoni\",\n            \"mobile\": \"9876598765\",\n            \"email\": \"msd@csk.com\",\n            \"role\": \"Captain\",\n            \"sport_role\": \"Wicket Keeper Batsman\",\n            \"batting_style\": \"Right Hand\",\n            \"is_wicket_keeper\": true,\n            \"additional_details\": { \"jersey\": 7 }\n        },\n        {\n            \"name\": \"Ravindra Jadeja\",\n            \"mobile\": \"9123412345\",\n            \"role\": \"Vice-Captain\",\n            \"sport_role\": \"All Rounder\",\n            \"bowling_style\": \"Left Arm Orthodox\"\n        },\n        {\n            \"student_id\": \"REG-2026-001\" \n            // Use this if student is already registered in the system\n        }\n    ]\n}"
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/api/v1/sports-head/teams/{{TEAM_ID}}/players/bulk",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"sports-head",
+						"teams",
+						"{{TEAM_ID}}",
+						"players",
+						"bulk"
+					]
+				},
+				"description": "Add multiple players to a team. Supports both manual details (creates new student) and existing Registration IDs."
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "BASE_URL",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "TEAM_ID",
+			"value": "REPLACE_WITH_TEAM_UUID",
+			"type": "string"
+		}
+	]
+}
