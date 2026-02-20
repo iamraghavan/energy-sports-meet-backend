@@ -1,6 +1,7 @@
 const { Match, MatchPlayer, Team, Sport, Student, Registration, TeamMember, sequelize } = require('../models');
 const { sendEmail } = require('../utils/email');
 const { getMatchScheduledTemplate, getMatchLiveTemplate, getMatchResultTemplate } = require('../utils/emailTemplates');
+const logger = require('../utils/logger');
 
 // Create a Match
 exports.createMatch = async (req, res) => {
