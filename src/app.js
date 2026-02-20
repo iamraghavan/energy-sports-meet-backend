@@ -12,9 +12,27 @@ const app = express();
 
 // Middlewares
 app.use(statusMonitor()); // Monitoring at /status
-app.use(helmet());
+app.use(helmet({
+    crossOriginResourcePolicy: false, // Allow cross-origin images/assets
+    crossOriginEmbedderPolicy: false
+}));
 app.use(compression());
-app.use(cors());
+app.use(cors({
+    origin: (origin, callback) => {
+        // Debugging: Log incoming origins to console
+        if (origin) logger.info(`CORS Request from: ${origin}`);
+        
+        // Allow requests with no origin (like mobile apps)
+        if (!origin) return callback(null, true);
+        
+        // Allow all origins with credentials: true
+        // For security in production, you'd want to check against a whitelist
+        callback(null, true);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('combined', { stream: logger.stream })); // Use Winston for HTTP logging
@@ -22,7 +40,7 @@ app.use(morgan('combined', { stream: logger.stream })); // Use Winston for HTTP 
 // Rate Limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100 // Limit each IP to 100 requests per windowMs
+    max: 1000 // Increased for Socket.IO polling stability
 });
 app.use(limiter);
 

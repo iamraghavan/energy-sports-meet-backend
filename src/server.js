@@ -28,13 +28,12 @@ const io = new Server(server, {
     cors: {
         // Fix for "Access-Control-Allow-Origin" with Credentials
         origin: (origin, callback) => {
-            // Allow requests with no origin (like mobile apps or curl requests)
             if (!origin) return callback(null, true);
-            // Allow any origin
             callback(null, true);
         },
-        methods: ["GET", "POST"],
-        credentials: true
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        credentials: true,
+        allowedHeaders: ["Content-Type", "Authorization"]
     }
 });
 
