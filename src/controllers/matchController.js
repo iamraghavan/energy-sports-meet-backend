@@ -491,7 +491,7 @@ exports.getMatchLineup = async (req, res) => {
         const { matchId } = req.params;
         const lineup = await MatchPlayer.findAll({
             where: { match_id: matchId },
-            include: [{ model: Student, attributes: ['id', 'name', 'registration_code'] }]
+            include: [{ model: Student, attributes: ['id', 'name'] }]
         });
         res.json(lineup);
     } catch (error) {

@@ -26,7 +26,13 @@ const io = new Server(server, {
     maxHttpBufferSize: 1e6, // 1 MB limit per message
     
     cors: {
-        origin: "*", // TODO: Restrict this in Production!
+        // Fix for "Access-Control-Allow-Origin" with Credentials
+        origin: (origin, callback) => {
+            // Allow requests with no origin (like mobile apps or curl requests)
+            if (!origin) return callback(null, true);
+            // Allow any origin
+            callback(null, true);
+        },
         methods: ["GET", "POST"],
         credentials: true
     }
