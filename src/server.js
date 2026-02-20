@@ -26,10 +26,10 @@ const io = new Server(server, {
     maxHttpBufferSize: 1e6, // 1 MB limit per message
     
     cors: {
-        origin: true, // Echo origin to allow credentials
+        origin: true,
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
         credentials: true,
-        allowedHeaders: ["*"] // Allow all custom headers
+        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"]
     }
 });
 

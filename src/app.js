@@ -25,10 +25,10 @@ app.use(helmet({
 }));
 app.use(compression());
 app.use(cors({
-    origin: true, // Echoes the request origin, allowing all origins with credentials
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['*'] // Allow all custom headers
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
