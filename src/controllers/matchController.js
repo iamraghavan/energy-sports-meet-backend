@@ -1,4 +1,4 @@
-const { Match, MatchPlayer, Team, Sport, Student, Registration } = require('../models');
+const { Match, MatchPlayer, Team, Sport, Student, Registration, TeamMember } = require('../models');
 const { sendEmail } = require('../utils/email');
 const { getMatchScheduledTemplate, getMatchLiveTemplate, getMatchResultTemplate } = require('../utils/emailTemplates');
 
@@ -27,11 +27,12 @@ exports.createMatch = async (req, res) => {
         // 2. Fetch Team Member Emails
         const getEmails = async (teamId) => {
             if (!teamId) return [];
-            const registrations = await Registration.findAll({
+            // NEW: Fetch from TeamMember (Direct Add friendly)
+            const members = await TeamMember.findAll({
                 where: { team_id: teamId },
                 include: [{ model: Student, attributes: ['email'] }]
             });
-            return registrations.map(r => r.Student.email);
+            return members.map(m => m.Student && m.Student.email).filter(e => e);
         };
 
         const emailsA = await getEmails(team_a_id);
