@@ -4,8 +4,11 @@ const { getMatchScheduledTemplate, getMatchLiveTemplate, getMatchResultTemplate 
 
 // Create a Match
 exports.createMatch = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
         const { sport_id, team_a_id, team_b_id, start_time, referee_name } = req.body;
+        
+        // 1. Create Match
         const match = await Match.create({
             sport_id,
             team_a_id,
@@ -13,9 +16,34 @@ exports.createMatch = async (req, res) => {
             start_time,
             status: 'scheduled',
             referee_name
-        });
+        }, { transaction: t });
 
-        // 1. Fetch Details for Notification
+        // 2. Auto-Populate Lineups
+        const autoPopulateLineup = async (teamId) => {
+            if (!teamId) return;
+            const members = await TeamMember.findAll({
+                where: { team_id: teamId },
+                transaction: t
+            });
+            
+            if (members.length > 0) {
+                const matchPlayersData = members.map(m => ({
+                    match_id: match.id,
+                    team_id: teamId,
+                    student_id: m.student_id,
+                    is_substitute: false, // Default all as starting players
+                    performance_stats: {}
+                }));
+                await MatchPlayer.bulkCreate(matchPlayersData, { transaction: t });
+            }
+        };
+
+        await autoPopulateLineup(team_a_id);
+        await autoPopulateLineup(team_b_id);
+
+        await t.commit();
+
+        // 3. Fetch Details for Notification
         const fullMatch = await Match.findByPk(match.id, {
             include: [
                 { model: Team, as: 'TeamA' },
@@ -24,10 +52,9 @@ exports.createMatch = async (req, res) => {
             ]
         });
 
-        // 2. Fetch Team Member Emails
+        // 4. Fetch Team Member Emails for Notifications
         const getEmails = async (teamId) => {
             if (!teamId) return [];
-            // NEW: Fetch from TeamMember (Direct Add friendly)
             const members = await TeamMember.findAll({
                 where: { team_id: teamId },
                 include: [{ model: Student, attributes: ['email'] }]
@@ -39,7 +66,7 @@ exports.createMatch = async (req, res) => {
         const emailsB = await getEmails(team_b_id);
         const allRecipientEmails = [...new Set([...emailsA, ...emailsB])];
 
-        // 3. Send Notifications
+        // 5. Send Notifications
         if (allRecipientEmails.length > 0) {
             const template = getMatchScheduledTemplate({
                 teamAName: fullMatch.TeamA ? fullMatch.TeamA.team_name : 'Team A',
@@ -49,7 +76,6 @@ exports.createMatch = async (req, res) => {
                 matchId: match.id
             });
 
-            // Send to each recipient
             Promise.all(allRecipientEmails.map(email =>
                 sendEmail({
                     to: email,
@@ -66,6 +92,7 @@ exports.createMatch = async (req, res) => {
 
         res.status(201).json(match);
     } catch (error) {
+        if (t) await t.rollback();
         res.status(500).json({ error: error.message });
     }
 };
@@ -619,7 +646,7 @@ exports.getScorerTeamDetails = async (req, res) => {
         const members = await TeamMember.findAll({
             where: { team_id: teamId },
             include: [{ model: Student, attributes: ['id', 'name', 'mobile'] }]
-        });
+        }); 
 
         res.json({ ...team.toJSON(), members });
     } catch (error) {
