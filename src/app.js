@@ -122,6 +122,27 @@ app.get('/match-test', (req, res) => {
     res.sendFile(require('path').join(__dirname, '../test_socket.html'));
 });
 
+// [DEBUG] GET /api/logs - Serve all.log for remote debugging
+app.get('/api/logs', (req, res) => {
+    const fs = require('fs');
+    const path = require('path');
+    const logPath = path.join(__dirname, '../logs/all.log');
+
+    if (!fs.existsSync(logPath)) {
+        return res.status(404).json({ error: 'Log file not found. Ensure file logging is enabled.' });
+    }
+
+    // Read last 500 lines or 100KB for safety
+    const stats = fs.statSync(logPath);
+    const fileSizeInBytes = stats.size;
+    const readStream = fs.createReadStream(logPath, {
+        start: Math.max(0, fileSizeInBytes - 100000) // Last 100KB
+    });
+
+    res.set('Content-Type', 'text/plain');
+    readStream.pipe(res);
+});
+
 // Error Handling Middleware
 app.use((err, req, res, next) => {
     logger.error(`${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
