@@ -25,6 +25,10 @@ router.post('/matches/:matchId/start', (req, res, next) => {
 
 router.put('/matches/:matchId/score', matchController.updateScore);
 
+// Specialized Scoring
+router.post('/matches/:matchId/score/standard', matchController.updateScoreStandard);
+router.post('/matches/:matchId/score/cricket', matchController.updateScoreCricket);
+
 router.post('/matches/:matchId/end', (req, res, next) => {
     req.body.status = 'completed';
     matchController.updateScore(req, res, next);

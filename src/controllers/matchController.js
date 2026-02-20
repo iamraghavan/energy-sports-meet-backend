@@ -1,4 +1,4 @@
-const { Match, MatchPlayer, Team, Sport, Student, Registration, TeamMember } = require('../models');
+const { Match, MatchPlayer, Team, Sport, Student, Registration, TeamMember, sequelize } = require('../models');
 const { sendEmail } = require('../utils/email');
 const { getMatchScheduledTemplate, getMatchLiveTemplate, getMatchResultTemplate } = require('../utils/emailTemplates');
 
@@ -112,11 +112,222 @@ exports.deleteMatch = async (req, res) => {
     }
 };
 
-// Update Match Score & Live Broadcast
+// ------------------------------------------------------------------
+// A. Standard Scoring (Football, Kabaddi, Volleyball, etc.)
+// Payload: { points, team_id, player_id, event_type: 'goal'|'point'|'foul' }
+// ------------------------------------------------------------------
+exports.updateScoreStandard = async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const { matchId } = req.params;
+        const { points, team_id, player_id, event_type, details } = req.body;
+
+        const match = await Match.findByPk(matchId, { transaction: t });
+        if (!match) {
+            await t.rollback();
+            return res.status(404).json({ error: 'Match not found' });
+        }
+
+        // 1. Update Global Score
+        let currentScore = match.score_details || {};
+        if (!currentScore[team_id]) currentScore[team_id] = { score: 0 };
+        
+        currentScore[team_id].score = (currentScore[team_id].score || 0) + (points || 0);
+
+        // 2. Log Event
+        const newEvent = {
+            timestamp: new Date(),
+            event_type: event_type || 'score',
+            team_id,
+            player_id,
+            value: points,
+            details
+        };
+        const events = match.match_events || [];
+        
+        // Save
+        match.score_details = currentScore;
+        match.match_events = [...events, newEvent];
+        match.changed('score_details', true);
+        match.changed('match_events', true);
+        await match.save({ transaction: t });
+
+        // 3. Update Player Performance (if applicable)
+        if (player_id) {
+            const mp = await MatchPlayer.findOne({
+                where: { match_id: matchId, student_id: player_id },
+                transaction: t
+            });
+            if (mp) {
+                let stats = mp.performance_stats || {};
+                const key = event_type || 'points';
+                stats[key] = (stats[key] || 0) + (points || 1);
+                mp.performance_stats = stats;
+                mp.changed('performance_stats', true);
+                await mp.save({ transaction: t });
+            }
+        }
+
+        await t.commit();
+
+        // 4. Socket Broadcast
+        const io = req.app.get('io');
+        // Standard Update Event
+        io.to(matchId).emit('score_updated', { matchId, score: match.score_details, event: newEvent });
+        io.to('live_overview').emit('overview_update', { matchId, score: match.score_details });
+
+        res.json({ message: 'Standard score updated', score: match.score_details });
+
+    } catch (error) {
+        if (t) await t.rollback();
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// ------------------------------------------------------------------
+// B. Cricket Scoring (Ball-by-Ball)
+// Payload: { runs: 0-6, is_wicket, wicket_type, extras, extra_type, striker_id, non_striker_id, bowler_id }
+// ------------------------------------------------------------------
+exports.updateScoreCricket = async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const { matchId } = req.params;
+        const { 
+            runs,           // Runs off the bat (0-6)
+            is_wicket,      // Boolean
+            wicket_type,    // bowled, caught, etc.
+            extras,         // Extra runs (0-5)
+            extra_type,     // wide, noball, bye, legbye
+            batting_team_id,
+            striker_id,
+            non_striker_id,
+            bowler_id,
+            over_number,    // Current Over (0.1, 0.2...)
+            ball_number     // 1-6
+        } = req.body;
+
+        const match = await Match.findByPk(matchId, { transaction: t });
+        if (!match) {
+            await t.rollback();
+            return res.status(404).json({ error: 'Match not found' });
+        }
+
+        // 1. Calculate Total Runs for this Ball
+        const runsScored = (runs || 0);
+        const extraRuns = (extras || 0);
+        const totalBallRuns = runsScored + extraRuns;
+
+        // 2. Update Batting Team Score
+        let score = match.score_details || {}; // Structure: { teamA: { runs: 120, wickets: 2, overs: 14.2 } }
+        if (!score[batting_team_id]) {
+            score[batting_team_id] = { runs: 0, wickets: 0, overs: 0.0 };
+        }
+
+        score[batting_team_id].runs += totalBallRuns;
+        
+        if (is_wicket) {
+            score[batting_team_id].wickets += 1;
+        }
+
+        // Logic to update overs (handling legals vs wides/noballs)
+        // If it's a Wide or No Ball, the ball count for the over doesn't increase (usually)
+        const isLegalBall = !['wide', 'noball'].includes(extra_type);
+        if (isLegalBall) {
+            // Simplified Over calculation logic
+            // Assuming frontend sends the current over state or we verify here. 
+            // For MVP: trusting frontend sent "over_number" (e.g., 14.2)
+            score[batting_team_id].overs = over_number; 
+        }
+
+        // 3. Log Ball Event
+        const ballEvent = {
+            timestamp: new Date(),
+            event_type: 'delivery',
+            batting_team_id,
+            runs,
+            extras,
+            is_wicket,
+            striker_id,
+            bowler_id,
+            commentary: `${over_number}: ${runs} runs${is_wicket ? ', WICKET' : ''}`
+        };
+        const events = match.match_events || [];
+        match.match_events = [...events, ballEvent];
+        match.score_details = score;
+        
+        match.changed('score_details', true);
+        match.changed('match_events', true);
+        await match.save({ transaction: t });
+
+        // 4. Update Player Stats (Striker & Bowler)
+        // Striker
+        if (striker_id) {
+            const bats = await MatchPlayer.findOne({ where: { match_id: matchId, student_id: striker_id }, transaction: t });
+            if (bats) {
+                let s = bats.performance_stats || { runs: 0, balls: 0, fours: 0, sixes: 0 };
+                // Only count ball faced if it's not a Wide (usually)
+                if (extra_type !== 'wide') s.balls = (s.balls || 0) + 1;
+                
+                s.runs = (s.runs || 0) + runsScored;
+                if (runsScored === 4) s.fours = (s.fours || 0) + 1;
+                if (runsScored === 6) s.sixes = (s.sixes || 0) + 1;
+                
+                bats.performance_stats = s;
+                bats.changed('performance_stats', true);
+                await bats.save({ transaction: t });
+            }
+        }
+        
+        // Bowler
+        if (bowler_id) {
+            const bowl = await MatchPlayer.findOne({ where: { match_id: matchId, student_id: bowler_id }, transaction: t });
+            if (bowl) {
+                let s = bowl.performance_stats || { overs: 0, runs_conceded: 0, wickets: 0 };
+                // Update runs conceded (Bowler usually penalised for output runs + wides/noballs, but not byes)
+                // Simplified:
+                const bowlerRuns = runsScored + (['wide', 'noball'].includes(extra_type) ? extraRuns : 0);
+                s.runs_conceded = (s.runs_conceded || 0) + bowlerRuns;
+                
+                if (is_wicket && wicket_type !== 'runout') {
+                    s.wickets = (s.wickets || 0) + 1;
+                }
+                // OVer calculation is complex on backend without state history, handled by frontend mostly.
+                
+                bowl.performance_stats = s;
+                bowl.changed('performance_stats', true);
+                await bowl.save({ transaction: t });
+            }
+        }
+
+        await t.commit();
+
+        // 5. Socket Broadcast
+        const io = req.app.get('io');
+        // Specific 'cricket_update' event implies rich data structure
+        io.to(matchId).emit('cricket_score_update', { 
+            matchId, 
+            score: match.score_details, 
+            last_ball: ballEvent 
+        });
+        io.to('live_overview').emit('overview_update', { matchId, score: match.score_details });
+
+        res.json({ message: 'Ball logged', score: match.score_details });
+
+    } catch (error) {
+        if (t) await t.rollback();
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// Update Match Score (Legacy/Generic Wrapper)
 exports.updateScore = async (req, res) => {
+    // ... Legacy implementation if needed or redirect ...
+    // For now, keeping the implementation you saw earlier or deprecating it.
+    // Let's keep the basic one for backward compatibility or direct status updates.
     try {
         const { matchId } = req.params;
         const { score_details, status, winner_id } = req.body;
+
 
         const match = await Match.findByPk(matchId, {
             include: [

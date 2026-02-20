@@ -13,9 +13,22 @@ const PORT = process.env.PORT || 8080;
 
 const server = http.createServer(app);
 const io = new Server(server, {
+    // 1. Reliability: Connection State Recovery (Auto-restore packets)
+    connectionStateRecovery: {
+        maxDisconnectionDuration: 2 * 60 * 1000, // 2 mins backup
+        skipMiddlewares: true,
+    },
+    // 2. Reliability: Heartbeats (Detect dead clients)
+    pingInterval: 25000, // Ping every 25s (User requested 20-30s)
+    pingTimeout: 20000,  // Disconnect if no Pong within 20s
+    
+    // 3. Security: Prevent massive payloads (DoS)
+    maxHttpBufferSize: 1e6, // 1 MB limit per message
+    
     cors: {
-        origin: "*", // Allow all origins for now (adjust for production)
-        methods: ["GET", "POST"]
+        origin: "*", // TODO: Restrict this in Production!
+        methods: ["GET", "POST"],
+        credentials: true
     }
 });
 
