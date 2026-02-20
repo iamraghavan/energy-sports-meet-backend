@@ -16,6 +16,7 @@
     router.get('/matches', sportsHeadController.getMatches);
     router.post('/matches/schedule', matchController.createMatch);
     router.patch('/matches/:matchId', matchController.updateMatchDetails);
+    router.delete('/matches/:matchId', matchController.deleteMatch);
 
     // Team Routes
     router.get('/teams', sportsHeadController.getSportTeams);

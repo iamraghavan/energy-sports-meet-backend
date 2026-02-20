@@ -126,6 +126,13 @@ exports.deleteMatch = async (req, res) => {
         const match = await Match.findByPk(matchId);
         if (!match) return res.status(404).json({ error: 'Match not found' });
 
+        // User Constraint: Only scheduled or live matches can be deleted
+        if (match.status === 'completed') {
+            return res.status(403).json({ 
+                error: 'Completed matches cannot be deleted. Contact Admin if this was a mistake.' 
+            });
+        }
+
         await match.destroy();
 
         // Emit Socket Event
