@@ -1,0 +1,79 @@
+# Exported from Render on 2026-02-20T15:35:48Z
+version: "1"
+services:
+  - type: web
+    name: energy-sports-meet-backend
+    runtime: node
+    repo: https://github.com/iamraghavan/energy-sports-meet-backend
+    plan: free
+    envVars:
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_REGION
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: GOOGLE_CREDENTIALS_JSON
+        sync: false
+      - key: GOOGLE_SHEET_ID
+        sync: false
+      - key: credentials.json
+        sync: false
+      - key: WHATSAPP_TOKEN
+        sync: false
+      - key: WHATSAPP_API_URL
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_SECURE
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: BACKEND_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: SMTP_DEBUG
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: ASSET_ALLOWED_EXT
+        sync: false
+      - key: ASSET_SIGNATURE_TTL
+        sync: false
+      - key: ASSET_GH_BRANCH
+        sync: false
+      - key: ASSET_GH_REPO
+        sync: false
+      - key: ASSET_GH_OWNER
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: NODE_ENV
+        sync: false
+      - key: PORT
+        sync: false
+    region: oregon
+    buildCommand: npm install
+    startCommand: node src/server.js
+    autoDeployTrigger: commit
