@@ -14,8 +14,12 @@ router.put('/matches/:matchId', matchController.updateMatchDetails); // Update t
 router.delete('/matches/:matchId', matchController.deleteMatch);
 
 // --- Lineup Management ---
+// --- Lineup Management ---
 router.get('/matches/:matchId/lineup', matchController.getMatchLineup);
 router.post('/matches/:matchId/lineup', matchController.updateLineup); // Add/Remove Player
+
+// --- Team Details (For Lineup Selection) ---
+router.get('/teams/:teamId', matchController.getScorerTeamDetails);
 
 // --- Live Scoring & Status ---
 router.post('/matches/:matchId/start', (req, res, next) => {

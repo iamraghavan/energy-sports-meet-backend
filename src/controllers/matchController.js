@@ -595,3 +595,34 @@ exports.updateMatchEvent = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// Get Team Details (For Scorer Lineup Selection)
+// Mimics sportsHeadController.getTeamDetails but accessible to Scorers
+exports.getScorerTeamDetails = async (req, res) => {
+    try {
+        const { teamId } = req.params;
+
+        const team = await Team.findByPk(teamId, {
+            include: [
+                { model: Sport, attributes: ['id', 'name'] },
+                { 
+                    model: Student, 
+                    as: 'Captain',
+                    attributes: ['name', 'mobile']
+                }
+            ]
+        });
+
+        if (!team) return res.status(404).json({ error: 'Team not found' });
+
+        // Get members
+        const members = await TeamMember.findAll({
+            where: { team_id: teamId },
+            include: [{ model: Student, attributes: ['id', 'name', 'mobile', 'registration_code'] }]
+        });
+
+        res.json({ ...team.toJSON(), members });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};

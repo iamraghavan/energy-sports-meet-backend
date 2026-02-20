@@ -4,7 +4,7 @@
     const { protect, authorize } = require('../middlewares/authMiddleware');
 
     router.use(protect);
-    router.use(authorize('super_admin', 'sports_head'));
+    router.use(authorize('super_admin', 'sports_head','scorer'));
 
     const matchController = require('../controllers/matchController');
 
