@@ -612,18 +612,21 @@ exports.bulkAddPlayers = async (req, res) => {
             try {
                 // item: { name, role, sport_role, batting_style, bowling_style, is_wicket_keeper, additional_details, mobile, email }
                 
-                // Requirement: "remove the registration id" - implies we trust the Name/Mobile/Email to identify or create the student.
-                // We MUST have at least a Name. Ideally Mobile too for uniqueness, but if not provided, we might create duplicates or need a policy.
+                // Requirement: "name and role only mandatory other things are optional"
                 // Converting "student_id" lookup to optional or secondary.
 
                 if (!item.name) {
                      errors.push({ item, error: 'Player Name is required' });
                      continue;
                 }
+                if (!item.role) {
+                     errors.push({ item, error: 'Player Role is required (Captain, Vice-Captain, Player)' });
+                     continue;
+                }
 
                 let student = null;
 
-                // 1. Try finding by Mobile/Email if provided
+                // 1. Try finding by Mobile/Email IF provided (to avoid duplicates)
                 const whereClause = [];
                 if (item.mobile) whereClause.push({ mobile: item.mobile });
                 if (item.email) whereClause.push({ email: item.email });
@@ -635,7 +638,7 @@ exports.bulkAddPlayers = async (req, res) => {
                     });
                 }
 
-                // 2. If not found, Create New Student
+                // 2. If not found (or no contact info provided), Create New Student
                 if (!student) {
                     student = await Student.create({
                         name: item.name,
