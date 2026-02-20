@@ -23,6 +23,7 @@ router.get('/teams/:teamId', matchController.getScorerTeamDetails);
 
 // --- Live Scoring & Status ---
 router.post('/matches/:matchId/start', (req, res, next) => {
+    req.body = req.body || {}; // Fix: Handle empty body
     req.body.status = 'live';
     matchController.updateScore(req, res, next);
 });
@@ -34,6 +35,7 @@ router.post('/matches/:matchId/score/standard', matchController.updateScoreStand
 router.post('/matches/:matchId/score/cricket', matchController.updateScoreCricket);
 
 router.post('/matches/:matchId/end', (req, res, next) => {
+    req.body = req.body || {}; // Fix: Handle empty body
     req.body.status = 'completed';
     matchController.updateScore(req, res, next);
 });

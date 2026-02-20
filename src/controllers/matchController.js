@@ -618,7 +618,7 @@ exports.getScorerTeamDetails = async (req, res) => {
         // Get members
         const members = await TeamMember.findAll({
             where: { team_id: teamId },
-            include: [{ model: Student, attributes: ['id', 'name', 'mobile', 'registration_code'] }]
+            include: [{ model: Student, attributes: ['id', 'name', 'mobile'] }]
         });
 
         res.json({ ...team.toJSON(), members });
