@@ -5,13 +5,14 @@ const matchService = require('../services/matchService');
 
 module.exports = (io) => {
     io.on('connection', (socket) => {
-        logger.info(`🔌 New client connected: ${socket.id}`);
+        try {
+            logger.info(`🔌 New client connected: ${socket.id}`);
 
-        // 1. Join Specific Match Room (Detailed View)
-        socket.on('join_match', (matchId) => {
-            socket.join(matchId);
-            logger.info(`🏠 Socket joined match room`, { socketId: socket.id, matchId });
-        });
+            // 1. Join Specific Match Room (Detailed View)
+            socket.on('join_match', (matchId) => {
+                socket.join(matchId);
+                logger.info(`🏠 Socket joined match room`, { socketId: socket.id, matchId });
+            });
 
         // 2. Join Overview Room (Dashboard View)
         // Client should emit 'join_overview' when on the main list page
@@ -131,5 +132,9 @@ module.exports = (io) => {
         socket.on('disconnect', () => {
             logger.info(`🔌 Client disconnected: ${socket.id}`);
         });
+        } catch (connError) {
+            logger.error(`💥 Socket Handshake Exception: ${connError.message}`, { stack: connError.stack });
+            socket.disconnect(true);
+        }
     });
 };

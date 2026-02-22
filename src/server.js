@@ -13,11 +13,13 @@ const PORT = process.env.PORT || 8080;
 
 const server = http.createServer(app);
 const io = new Server(server, {
-    // 1. Reliability: Connection State Recovery (Auto-restore packets)
+    // Disable experimental recovery to rule out "Server Error" handshake bugs
+    /*
     connectionStateRecovery: {
-        maxDisconnectionDuration: 2 * 60 * 1000, // 2 mins backup
+        maxDisconnectionDuration: 2 * 60 * 1000,
         skipMiddlewares: true,
     },
+    */
     // 2. Reliability: Heartbeats (Detect dead clients)
     pingInterval: 25000, // Ping every 25s (User requested 20-30s)
     pingTimeout: 20000,  // Disconnect if no Pong within 20s
@@ -36,6 +38,22 @@ const io = new Server(server, {
 // Initialize Socket Logic
 require('./sockets/matchSocket')(io);
 
+// [DEBUG] Low-level Engine error logging
+io.engine.on("connection_error", (err) => {
+    logger.error(`🚨 Engine Connection Error: ${err.message}`, {
+        code: err.code,
+        context: err.context,
+        type: err.type
+    });
+});
+
+io.on('new_namespace', (namespace) => {
+    namespace.use((socket, next) => {
+        logger.info(`🌐 Namespace Handshake: ${socket.id} on ${namespace.name}`);
+        next();
+    });
+});
+
 // Make io accessible globally or pass to routes (Middleware approach)
 app.set('io', io);
 
@@ -50,8 +68,8 @@ async function startServer() {
         await sequelize.authenticate();
         logger.info('✅ Database connection has been established successfully.');
 
-        // Sync (alter: true to add new tables without dropping old ones)
-        await sequelize.sync({ alter: true });
+        // Sync: Using simple sync() instead of alter: true to avoid MariaDB 64-key limits in production
+        await sequelize.sync();
         logger.info('✅ Database synchronized successfully.');
     } catch (error) {
         console.error('DATABASE CONNECTION ERROR:', error.message);

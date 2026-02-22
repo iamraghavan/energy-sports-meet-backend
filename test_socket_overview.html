@@ -103,11 +103,13 @@
         log(`Connecting to ${BACKEND_URL}...`);
         
         socket = io(BACKEND_URL, {
-            transports: ["websocket", "polling"], // 📡 Added polling as fallback
+            // Priority: Start with polling (safest for cloud proxies) 
+            // then upgrade to websocket if possible.
+            transports: ["polling", "websocket"], 
             upgrade: true,
-            timeout: 60000, // ⏱️ Increased to 1 minute for Cold Starts
+            timeout: 60000, // 1 minute for Cold Starts
             reconnection: true,
-            reconnectionAttempts: 5
+            reconnectionAttempts: 10
         });
 
         socket.on('connect', () => {
