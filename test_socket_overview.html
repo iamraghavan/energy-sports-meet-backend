@@ -50,6 +50,11 @@
 
 <div class="grid">
     <div class="card">
+        <h3>Match Lifecycle</h3>
+        <div style="display: flex; gap: 10px;">
+            <button class="primary" onclick="updateStatus('live')">🚀 Start Match (Live)</button>
+            <button class="primary" onclick="updateStatus('completed')" style="background: #64748b;">🏁 End Match (Completed)</button>
+        </div>
         <h3>Log Ball Event</h3>
         <div class="btn-grid">
             <button onclick="logBall(0)">0</button>
@@ -98,9 +103,11 @@
         log(`Connecting to ${BACKEND_URL}...`);
         
         socket = io(BACKEND_URL, {
-            transports: ["websocket"], // 🚀 CRITICAL
-            upgrade: false,
-            timeout: 20000
+            transports: ["websocket", "polling"], // 📡 Added polling as fallback
+            upgrade: true,
+            timeout: 60000, // ⏱️ Increased to 1 minute for Cold Starts
+            reconnection: true,
+            reconnectionAttempts: 5
         });
 
         socket.on('connect', () => {
@@ -127,6 +134,29 @@
             document.getElementById('status-dot').style.background = 'grey';
             document.getElementById('status-text').innerText = 'Disconnected';
             log(`Disconnected: ${reason}`, 'error');
+        });
+    }
+
+    function updateStatus(newStatus) {
+        if (!socket || !socket.connected) {
+            log("❌ ERROR: Not connected to server!", "error");
+            return;
+        }
+
+        const matchId = document.getElementById('matchId').value;
+        const payload = {
+            matchId,
+            status: newStatus
+        };
+
+        log(`📤 TRANSITIONING: Match status to ${newStatus.toUpperCase()}...`);
+        
+        socket.emit('update_match_status', payload, (res) => {
+            if (res.status === 'ok') {
+                log(`✅ SUCCESS: Match is now ${newStatus.toUpperCase()}`);
+            } else {
+                log(`❌ FAILED: ${res.message}`, "error");
+            }
         });
     }
 

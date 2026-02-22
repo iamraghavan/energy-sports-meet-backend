@@ -1,6 +1,6 @@
 const { Student, Registration, Sport, Team, Payment, College, RegistrationSport, sequelize } = require('../models');
 const { uploadToGitHub } = require('../utils/upload');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const { generateRegistrationPDF, generateCheckInPDF } = require('../utils/pdf');
 const { Op } = require('sequelize');
 

@@ -20,12 +20,13 @@ app.use((req, res, next) => {
 // Middlewares
 app.use(statusMonitor()); // Monitoring at /status
 app.use(helmet({
-    crossOriginResourcePolicy: false, // Allow cross-origin images/assets
-    crossOriginEmbedderPolicy: false
+    crossOriginResourcePolicy: false,
+    crossOriginEmbedderPolicy: false,
+    contentSecurityPolicy: false // Disable CSP for less-restricted WebSocket upgrades
 }));
 app.use(compression());
 app.use(cors({
-    origin: true,
+    origin: (origin, callback) => callback(null, true), // Explicitly allow all origins
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
@@ -55,8 +56,8 @@ app.use((req, res, next) => {
 
 // Rate Limiting
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000 // Increased for Socket.IO polling stability
+    windowMs: 15 * 60 * 1000, 
+    max: 5000 // Very high to prevent accidental blocking during debugging sessions
 });
 app.use(limiter);
 

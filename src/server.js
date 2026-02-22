@@ -26,7 +26,7 @@ const io = new Server(server, {
     maxHttpBufferSize: 1e6, // 1 MB limit per message
     
     cors: {
-        origin: true,
+        origin: (origin, callback) => callback(null, true),
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
         credentials: true,
         allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"]

@@ -1,6 +1,6 @@
 const { Octokit } = require('@octokit/rest');
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const octokit = new Octokit({
