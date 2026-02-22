@@ -18,7 +18,7 @@ app.use((req, res, next) => {
 });
 
 // Middlewares
-app.use(statusMonitor()); // Monitoring at /status
+// app.use(statusMonitor()); // Monitoring at /status
 app.use(helmet({
     crossOriginResourcePolicy: false,
     crossOriginEmbedderPolicy: false,
@@ -26,7 +26,7 @@ app.use(helmet({
 }));
 app.use(compression());
 app.use(cors({
-    origin: (origin, callback) => callback(null, true), 
+    origin: (origin, callback) => callback(null, true),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-Request-ID']
@@ -82,6 +82,15 @@ app.use('/api/v1/sports-head', require('./routes/sportsHeadRoutes'));
 app.use('/api/v1/scorer', require('./routes/scorerRoutes'));
 app.use('/api/v1/teams', require('./routes/teamRoutes'));
 app.use('/api/v1/overview', require('./routes/overviewRoutes'));
+
+// [DEBUG] Client-side Error Reporter
+app.post('/api/v1/debug/report-error', (req, res) => {
+    logger.error(`🖥️ CLIENT ERROR: ${JSON.stringify(req.body)}`, {
+        userAgent: req.get('user-agent'),
+        ip: req.ip
+    });
+    res.status(204).end();
+});
 
 // Health Check
 app.get('/health', (req, res) => {

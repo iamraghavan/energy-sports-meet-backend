@@ -80,7 +80,7 @@
 
 <script>
     let socket;
-    const BACKEND_URL = "https://energy-sports-meet-backend.onrender.com";
+    const BACKEND_URL = "http://localhost:8080";
 
     function log(msg, type = 'info') {
         const div = document.createElement('div');
@@ -123,8 +123,8 @@
 
         socket.on('connect_error', (err) => {
             log(`CONNECTION ERROR: ${err.message}`, 'error');
-            document.getElementById('status-dot').style.background = '#f87171';
             document.getElementById('status-text').innerText = 'Error';
+            reportRemoteError(err);
         });
 
         socket.on('cricket_score_update', (data) => {
@@ -137,6 +137,22 @@
             document.getElementById('status-text').innerText = 'Disconnected';
             log(`Disconnected: ${reason}`, 'error');
         });
+    }
+
+    async function reportRemoteError(err) {
+        try {
+            await fetch(`${BACKEND_URL}/api/v1/debug/report-error`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: err.message,
+                    context: err.context,
+                    type: err.type,
+                    description: err.description,
+                    timestamp: new Date().toISOString()
+                })
+            });
+        } catch (e) { console.warn('Failed to report error to server'); }
     }
 
     function updateStatus(newStatus) {

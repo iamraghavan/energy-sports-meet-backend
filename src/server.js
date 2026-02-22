@@ -13,44 +13,22 @@ const PORT = process.env.PORT || 8080;
 
 const server = http.createServer(app);
 const io = new Server(server, {
-    // Disable experimental recovery to rule out "Server Error" handshake bugs
-    /*
-    connectionStateRecovery: {
-        maxDisconnectionDuration: 2 * 60 * 1000,
-        skipMiddlewares: true,
-    },
-    */
-    // 2. Reliability: Heartbeats (Detect dead clients)
-    pingInterval: 25000, // Ping every 25s (User requested 20-30s)
-    pingTimeout: 20000,  // Disconnect if no Pong within 20s
-    
-    // 3. Security: Prevent massive payloads (DoS)
-    maxHttpBufferSize: 1e6, // 1 MB limit per message
-    
     cors: {
         origin: (origin, callback) => callback(null, true),
-        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-        credentials: true,
-        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"]
-    }
+        methods: ["GET", "POST"],
+        credentials: true
+    },
+    path: '/socket.io'
 });
 
 // Initialize Socket Logic
 require('./sockets/matchSocket')(io);
 
-// [DEBUG] Low-level Engine error logging
+// [DEBUG] Low-level Engine diagnostics
 io.engine.on("connection_error", (err) => {
     logger.error(`🚨 Engine Connection Error: ${err.message}`, {
         code: err.code,
-        context: err.context,
-        type: err.type
-    });
-});
-
-io.on('new_namespace', (namespace) => {
-    namespace.use((socket, next) => {
-        logger.info(`🌐 Namespace Handshake: ${socket.id} on ${namespace.name}`);
-        next();
+        context: err.context
     });
 });
 

@@ -1,7 +1,132 @@
-const { Match, MatchPlayer, Team, Sport, Student, Registration, TeamMember } = require('../models');
+const { Match, MatchPlayer, Team, Sport, Student, Registration, TeamMember, sequelize } = require('../models');
 const { sendEmail } = require('../utils/email');
-const { getMatchLiveTemplate, getMatchResultTemplate } = require('../utils/emailTemplates');
+const { getMatchScheduledTemplate, getMatchLiveTemplate, getMatchResultTemplate } = require('../utils/emailTemplates');
 const logger = require('../utils/logger');
+
+/**
+ * Create a Match (Service Layer)
+ */
+exports.createMatch = async (data) => {
+    const t = await sequelize.transaction();
+    try {
+        const { sport_id, team_a_id, team_b_id, start_time, referee_name } = data;
+        
+        // 1. Create Match
+        const match = await Match.create({
+            sport_id,
+            team_a_id,
+            team_b_id,
+            start_time,
+            status: 'scheduled',
+            referee_name
+        }, { transaction: t });
+
+        // 2. Auto-Populate Lineups
+        const autoPopulateLineup = async (teamId) => {
+            if (!teamId) return;
+            const members = await TeamMember.findAll({
+                where: { team_id: teamId },
+                transaction: t
+            });
+            
+            if (members.length > 0) {
+                const matchPlayersData = members.map(m => ({
+                    match_id: match.id,
+                    team_id: teamId,
+                    student_id: m.student_id,
+                    is_substitute: false,
+                    performance_stats: {}
+                }));
+                await MatchPlayer.bulkCreate(matchPlayersData, { transaction: t });
+            }
+        };
+
+        await autoPopulateLineup(team_a_id);
+        await autoPopulateLineup(team_b_id);
+
+        await t.commit();
+
+        // 3. Fetch Full Details for Notifications
+        const fullMatch = await Match.findByPk(match.id, {
+            include: [
+                { model: Team, as: 'TeamA' },
+                { model: Team, as: 'TeamB' },
+                { model: Sport }
+            ]
+        });
+
+        // 4. Send Notifications in Background
+        this.broadcastMatchScheduled(fullMatch).catch(err => logger.error(`Match scheduled notification error: ${err.message}`));
+
+        return fullMatch;
+    } catch (error) {
+        if (t) await t.rollback();
+        throw error;
+    }
+};
+
+/**
+ * Update Match Details (Non-Score)
+ */
+exports.updateMatchDetails = async (matchId, updates) => {
+    const match = await Match.findByPk(matchId);
+    if (!match) throw new Error('Match not found');
+
+    await match.update(updates);
+    return match;
+};
+
+/**
+ * Delete Match
+ */
+exports.deleteMatch = async (matchId) => {
+    const match = await Match.findByPk(matchId);
+    if (!match) throw new Error('Match not found');
+
+    if (match.status === 'completed') {
+        throw new Error('Completed matches cannot be deleted.');
+    }
+
+    await match.destroy();
+    return match;
+};
+
+/**
+ * Internal helper for Scheduled Notifications
+ */
+exports.broadcastMatchScheduled = async (match) => {
+    const getEmails = async (teamId) => {
+        if (!teamId) return [];
+        const members = await TeamMember.findAll({
+            where: { team_id: teamId },
+            include: [{ model: Student, attributes: ['email'] }]
+        });
+        return members.map(m => m.Student && m.Student.email).filter(e => e);
+    };
+
+    const emailsA = await getEmails(match.team_a_id);
+    const emailsB = await getEmails(match.team_b_id);
+    const allRecipientEmails = [...new Set([...emailsA, ...emailsB])];
+
+    if (allRecipientEmails.length > 0) {
+        const template = getMatchScheduledTemplate({
+            teamAName: match.TeamA ? match.TeamA.team_name : 'Team A',
+            teamBName: match.TeamB ? match.TeamB.team_name : 'Team B',
+            sportName: match.Sport.name,
+            startTime: new Date(match.start_time).toLocaleString(),
+            matchId: match.id
+        });
+
+        await Promise.all(allRecipientEmails.map(email =>
+            sendEmail({
+                to: email,
+                subject: `Match Scheduled: ${match.Sport.name}`,
+                text: template.text,
+                html: template.html
+            })
+        ));
+    }
+};
 
 /**
  * Handle Match Status Transitions (Scheduled -> Live -> Completed)

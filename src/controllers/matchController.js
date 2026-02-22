@@ -7,95 +7,15 @@ const matchService = require('../services/matchService');
 
 // Create a Match
 exports.createMatch = async (req, res) => {
-    const t = await sequelize.transaction();
     try {
-        const { sport_id, team_a_id, team_b_id, start_time, referee_name } = req.body;
-        
-        // 1. Create Match
-        const match = await Match.create({
-            sport_id,
-            team_a_id,
-            team_b_id,
-            start_time,
-            status: 'scheduled',
-            referee_name
-        }, { transaction: t });
-
-        // 2. Auto-Populate Lineups
-        const autoPopulateLineup = async (teamId) => {
-            if (!teamId) return;
-            const members = await TeamMember.findAll({
-                where: { team_id: teamId },
-                transaction: t
-            });
-            
-            if (members.length > 0) {
-                const matchPlayersData = members.map(m => ({
-                    match_id: match.id,
-                    team_id: teamId,
-                    student_id: m.student_id,
-                    is_substitute: false, // Default all as starting players
-                    performance_stats: {}
-                }));
-                await MatchPlayer.bulkCreate(matchPlayersData, { transaction: t });
-            }
-        };
-
-        await autoPopulateLineup(team_a_id);
-        await autoPopulateLineup(team_b_id);
-
-        await t.commit();
-
-        // 3. Fetch Details for Notification
-        const fullMatch = await Match.findByPk(match.id, {
-            include: [
-                { model: Team, as: 'TeamA' },
-                { model: Team, as: 'TeamB' },
-                { model: Sport }
-            ]
-        });
-
-        // 4. Fetch Team Member Emails for Notifications
-        const getEmails = async (teamId) => {
-            if (!teamId) return [];
-            const members = await TeamMember.findAll({
-                where: { team_id: teamId },
-                include: [{ model: Student, attributes: ['email'] }]
-            });
-            return members.map(m => m.Student && m.Student.email).filter(e => e);
-        };
-
-        const emailsA = await getEmails(team_a_id);
-        const emailsB = await getEmails(team_b_id);
-        const allRecipientEmails = [...new Set([...emailsA, ...emailsB])];
-
-        // 5. Send Notifications
-        if (allRecipientEmails.length > 0) {
-            const template = getMatchScheduledTemplate({
-                teamAName: fullMatch.TeamA ? fullMatch.TeamA.team_name : 'Team A',
-                teamBName: fullMatch.TeamB ? fullMatch.TeamB.team_name : 'Team B',
-                sportName: fullMatch.Sport.name,
-                startTime: new Date(start_time).toLocaleString(),
-                matchId: match.id
-            });
-
-            Promise.all(allRecipientEmails.map(email =>
-                sendEmail({
-                    to: email,
-                    subject: `Match Scheduled: ${fullMatch.Sport.name}`,
-                    text: template.text,
-                    html: template.html
-                })
-            )).catch(err => console.error('Delayed Match Emails Error:', err.message));
-        }
+        const match = await matchService.createMatch(req.body);
 
         // Emit Socket Event
         const io = req.app.get('io');
-        io.to('live_overview').emit('overview_update', { action: 'create', match });
+        io.to('live_overview').emit('overview_update', { action: 'create', matchId: match.id, status: match.status });
 
         res.status(201).json(match);
     } catch (error) {
-        if (t) await t.rollback();
         res.status(500).json({ error: error.message });
     }
 };
@@ -104,17 +24,12 @@ exports.createMatch = async (req, res) => {
 exports.updateMatchDetails = async (req, res) => {
     try {
         const { matchId } = req.params;
-        const updates = req.body; // { start_time, referee_name, etc. }
-
-        const match = await Match.findByPk(matchId);
-        if (!match) return res.status(404).json({ error: 'Match not found' });
-
-        await match.update(updates);
+        const match = await matchService.updateMatchDetails(matchId, req.body);
 
         // Emit Socket Events
         const io = req.app.get('io');
         io.to(matchId).emit('match_details_updated', match);
-        io.to('live_overview').emit('overview_update', { action: 'update', match });
+        io.to('live_overview').emit('overview_update', { action: 'update', matchId, status: match.status });
 
         res.json({ message: 'Match details updated', match });
     } catch (error) {
@@ -126,17 +41,7 @@ exports.updateMatchDetails = async (req, res) => {
 exports.deleteMatch = async (req, res) => {
     try {
         const { matchId } = req.params;
-        const match = await Match.findByPk(matchId);
-        if (!match) return res.status(404).json({ error: 'Match not found' });
-
-        // User Constraint: Only scheduled or live matches can be deleted
-        if (match.status === 'completed') {
-            return res.status(403).json({ 
-                error: 'Completed matches cannot be deleted. Contact Admin if this was a mistake.' 
-            });
-        }
-
-        await match.destroy();
+        await matchService.deleteMatch(matchId);
 
         // Emit Socket Event
         const io = req.app.get('io');

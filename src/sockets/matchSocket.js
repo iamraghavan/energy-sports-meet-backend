@@ -5,14 +5,54 @@ const matchService = require('../services/matchService');
 
 module.exports = (io) => {
     io.on('connection', (socket) => {
-        try {
-            logger.info(`🔌 New client connected: ${socket.id}`);
+        logger.info(`🔌 New client connected: ${socket.id}`);
 
-            // 1. Join Specific Match Room (Detailed View)
-            socket.on('join_match', (matchId) => {
-                socket.join(matchId);
-                logger.info(`🏠 Socket joined match room`, { socketId: socket.id, matchId });
-            });
+        // 0. Match Lifecycle Management (CRUD)
+        socket.on('create_match', async (payload, callback) => {
+            try {
+                const match = await matchService.createMatch(payload);
+                io.to('live_overview').emit('overview_update', { action: 'create', matchId: match.id, status: match.status });
+                logger.info(`✅ [Socket] Match created: ${match.id}`);
+                if (callback) callback({ status: 'ok', match });
+            } catch (error) {
+                logger.error(`❌ [Socket] Create match error: ${error.message}`);
+                if (callback) callback({ status: 'error', message: error.message });
+            }
+        });
+
+        socket.on('update_match', async (payload, callback) => {
+            const { matchId, ...updates } = payload;
+            try {
+                const match = await matchService.updateMatchDetails(matchId, updates);
+                io.to(matchId).emit('match_details_updated', match);
+                io.to('live_overview').emit('overview_update', { action: 'update', matchId, status: match.status });
+                logger.info(`✅ [Socket] Match updated: ${matchId}`);
+                if (callback) callback({ status: 'ok', match });
+            } catch (error) {
+                logger.error(`❌ [Socket] Update match error: ${error.message}`);
+                if (callback) callback({ status: 'error', message: error.message });
+            }
+        });
+
+        socket.on('delete_match', async (payload, callback) => {
+            const { matchId } = payload;
+            try {
+                await matchService.deleteMatch(matchId);
+                io.to(matchId).emit('match_deleted', { matchId });
+                io.to('live_overview').emit('overview_update', { action: 'delete', matchId });
+                logger.info(`✅ [Socket] Match deleted: ${matchId}`);
+                if (callback) callback({ status: 'ok', matchId });
+            } catch (error) {
+                logger.error(`❌ [Socket] Delete match error: ${error.message}`);
+                if (callback) callback({ status: 'error', message: error.message });
+            }
+        });
+
+        // 1. Join Specific Match Room (Detailed View)
+        socket.on('join_match', (matchId) => {
+            socket.join(matchId);
+            logger.info(`🏠 Socket joined match room`, { socketId: socket.id, matchId });
+        });
 
         // 2. Join Overview Room (Dashboard View)
         // Client should emit 'join_overview' when on the main list page
@@ -132,9 +172,5 @@ module.exports = (io) => {
         socket.on('disconnect', () => {
             logger.info(`🔌 Client disconnected: ${socket.id}`);
         });
-        } catch (connError) {
-            logger.error(`💥 Socket Handshake Exception: ${connError.message}`, { stack: connError.stack });
-            socket.disconnect(true);
-        }
     });
 };
