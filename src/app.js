@@ -9,11 +9,11 @@ const logger = require('./utils/logger');
 require('dotenv').config();
 
 const app = express();
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 
 // Assign a unique Request ID to every incoming request
 app.use((req, res, next) => {
-    req.id = uuidv4();
+    req.id = crypto.randomUUID();
     next();
 });
 

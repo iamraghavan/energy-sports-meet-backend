@@ -1,261 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Dashboard Overview</title>
+    <title>Cricket Scoring - WebSocket Debugger</title>
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            padding: 20px;
-            background: #f4f4f9;
-        }
-
-        h1 {
-            color: #333;
-        }
-
-        .controls {
-            margin-bottom: 20px;
-        }
-
-        button {
-            padding: 10px 20px;
-            background: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 5px;
-        }
-
-        button:hover {
-            background: #0056b3;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        .card {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s;
-        }
-
-        .card.live {
-            border-left: 5px solid #28a745;
-        }
-
-        .card.scheduled {
-            border-left: 5px solid #ffc107;
-        }
-
-        .card.completed {
-            border-left: 5px solid #6c757d;
-        }
-
-        .card h3 {
-            margin: 0 0 10px 0;
-            font-size: 1.1em;
-            color: #555;
-        }
-
-        .score-board {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 1.5em;
-            font-weight: bold;
-            margin: 15px 0;
-        }
-
-        .team {
-            text-align: center;
-        }
-
-        .score {
-            color: #d9534f;
-            background: #eee;
-            padding: 5px 15px;
-            border-radius: 5px;
-        }
-
-        .status {
-            font-size: 0.8em;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #888;
-            margin-top: 10px;
-            display: block;
-        }
-
-        .log-container {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 2px solid #ddd;
-        }
-
-        .log {
-            background: #1e1e1e;
-            color: #00ff00;
-            padding: 10px;
-            height: 150px;
-            overflow-y: scroll;
-            font-family: monospace;
-            border-radius: 5px;
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; color: #1e293b; padding: 2rem; max-width: 1200px; margin: auto; }
+        .card { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); margin-bottom: 2rem; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        .score-board { text-align: center; }
+        .runs { font-size: 3rem; font-weight: bold; color: #0f172a; }
+        .overs { font-size: 1.2rem; color: #64748b; }
+        .btn-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; }
+        button { padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        button:hover { background: #f1f5f9; border-color: #cbd5e1; }
+        button.primary { background: #3b82f6; color: white; border: none; }
+        button.primary:hover { background: #2563eb; }
+        button.danger { background: #ef4444; color: white; border: none; }
+        #log { background: #0f172a; color: #4ade80; border-radius: 8px; padding: 1rem; font-family: monospace; height: 300px; overflow-y: auto; font-size: 0.85rem; }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #1e293b; padding-bottom: 2px; }
+        .error { color: #f87171; }
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
     </style>
 </head>
-
 <body>
-    <h1>🏟️ Live Matches Dashboard</h1>
 
-    <div class="controls">
-        <button onclick="initDashboard()">🔄 Connect & Load Matches</button>
-        <span id="connection-status" style="margin-left: 15px; color: red;">Disconnected</span>
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>🏏 Live Cricket Scorer Debugger</h2>
+        <div>
+            <span id="status-dot" class="status-dot" style="background: grey;"></span>
+            <span id="status-text">Disconnected</span>
+        </div>
     </div>
-
-    <div id="matches-grid" class="grid">
-        <!-- Matches will be inserted here -->
-        <p>Click "Connect & Load" to start...</p>
+    <div class="grid">
+        <div class="score-board">
+            <div id="team-name" style="font-weight: 600; font-size: 1.1rem;">Team A</div>
+            <div class="runs" id="score-display">0/0</div>
+            <div class="overs" id="over-display">(0.0 Overs)</div>
+        </div>
+        <div>
+            <label>Match ID:</label>
+            <input type="text" id="matchId" value="ENTER_MATCH_ID_HERE" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+            <p style="font-size: 0.8rem; color: #64748b;">Enter your active match UUID from the database.</p>
+            <button class="primary" onclick="connect()" style="width: 100%;">Connect to WebSocket</button>
+        </div>
     </div>
+</div>
 
-    <div class="log-container">
-        <h3>Socket Event Logs</h3>
-        <div id="log" class="log"></div>
+<div class="grid">
+    <div class="card">
+        <h3>Log Ball Event</h3>
+        <div class="btn-grid">
+            <button onclick="logBall(0)">0</button>
+            <button onclick="logBall(1)">1</button>
+            <button onclick="logBall(2)">2</button>
+            <button onclick="logBall(3)">3</button>
+            <button onclick="logBall(4)">4</button>
+            <button onclick="logBall(6)">6</button>
+            <button onclick="logBall(0, true)" class="danger">WICKET</button>
+            <button onclick="logBall(1, false, 'wide')">WIDE</button>
+        </div>
+        <div style="margin-top: 20px;">
+            <label>Current Over:</label> <input type="number" id="over" value="0" style="width: 40px;">
+            <label>Ball:</label> <input type="number" id="ball" value="1" style="width: 40px;">
+        </div>
     </div>
+    
+    <div class="card">
+        <h3>System Console</h3>
+        <div id="log"></div>
+    </div>
+</div>
 
-    <script>
-        const API_URL = 'https://energy-sports-meet-backend.onrender.com'; // Make sure this matches your backend
-        let socket;
+<script>
+    let socket;
+    const BACKEND_URL = "https://energy-sports-meet-backend.onrender.com";
 
-        async function initDashboard() {
-            // 1. Fetch Initial Data
-            try {
-                const response = await fetch(`${API_URL}/api/v1/matches/live`);
-                const matches = await response.json();
-                renderMatches(matches);
-                connectSocket();
-            } catch (error) {
-                console.error('Failed to load matches:', error);
-                log('Error loading matches: ' + error.message, 'error');
-            }
+    function log(msg, type = 'info') {
+        const div = document.createElement('div');
+        div.className = `log-entry ${type === 'error' ? 'error' : ''}`;
+        div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        const logContainer = document.getElementById('log');
+        logContainer.appendChild(div);
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function connect() {
+        const matchId = document.getElementById('matchId').value;
+        if (!matchId || matchId === 'ENTER_MATCH_ID_HERE') {
+            alert("Please enter a valid Match ID first!");
+            return;
         }
 
-        function renderMatches(matches) {
-            const container = document.getElementById('matches-grid');
-            container.innerHTML = '';
+        if (socket) socket.disconnect();
 
-            if (matches.length === 0) {
-                container.innerHTML = '<p>No live or scheduled matches found.</p>';
-                return;
-            }
+        log(`Connecting to ${BACKEND_URL}...`);
+        
+        socket = io(BACKEND_URL, {
+            transports: ["websocket"], // 🚀 CRITICAL
+            upgrade: false,
+            timeout: 20000
+        });
 
-            matches.forEach(match => {
-                const card = createMatchCard(match);
-                container.appendChild(card);
-            });
+        socket.on('connect', () => {
+            document.getElementById('status-dot').style.background = '#4ade80';
+            document.getElementById('status-text').innerText = 'Connected';
+            log(`SUCCESS: Connected! Socket ID: ${socket.id}`);
+            
+            socket.emit('join_match', matchId);
+            log(`Joined Match Room: ${matchId}`);
+        });
+
+        socket.on('connect_error', (err) => {
+            log(`CONNECTION ERROR: ${err.message}`, 'error');
+            document.getElementById('status-dot').style.background = '#f87171';
+            document.getElementById('status-text').innerText = 'Error';
+        });
+
+        socket.on('cricket_score_update', (data) => {
+            log(`📡 REAL-TIME UPDATE RECEIVED: ${JSON.stringify(data.score)}`);
+            updateUI(data.score);
+        });
+
+        socket.on('disconnect', (reason) => {
+            document.getElementById('status-dot').style.background = 'grey';
+            document.getElementById('status-text').innerText = 'Disconnected';
+            log(`Disconnected: ${reason}`, 'error');
+        });
+    }
+
+    function logBall(runs, isWicket = false, extraType = null) {
+        if (!socket || !socket.connected) {
+            log("❌ ERROR: Not connected to server!", "error");
+            return;
         }
 
-        function createMatchCard(match) {
-            const div = document.createElement('div');
-            div.className = `card ${match.status}`;
-            div.id = `match-${match.id}`;
+        const matchId = document.getElementById('matchId').value;
+        const over = parseInt(document.getElementById('over').value);
+        const ball = parseInt(document.getElementById('ball').value);
 
-            // Safe access to nested properties
-            const teamA = match.TeamA ? match.TeamA.team_name : 'TBA';
-            const teamB = match.TeamB ? match.TeamB.team_name : 'TBA';
-            const scoreDetails = match.score_details || {};
-            const scoreA = scoreDetails.team_a || 0;
-            const scoreB = scoreDetails.team_b || 0;
-            const sportName = match.Sport ? match.Sport.name : 'Unknown Sport';
+        const payload = {
+            matchId,
+            runs: runs,
+            is_wicket: isWicket,
+            batting_team_id: "TEAM_ID_HERE", // Replace with real ID
+            over_number: over,
+            ball_number: ball,
+            extra_type: extraType,
+            extras: extraType ? 1 : 0
+        };
 
-            div.innerHTML = `
-                <h3>${sportName}</h3>
-                <div class="score-board">
-                    <div class="team">
-                        <div>${teamA}</div>
-                    </div>
-                    <div class="score">${scoreA} - ${scoreB}</div>
-                    <div class="team">
-                        <div>${teamB}</div>
-                    </div>
-                </div>
-                <span class="status">● ${match.status.toUpperCase()}</span>
-            `;
-            return div;
-        }
-
-        function updateMatchCard(data) {
-            // data = { matchId, scoreSummary: { team_a, team_b }, status }
-            const card = document.getElementById(`match-${data.matchId}`);
-            if (card) {
-                // Flash effect
-                card.style.backgroundColor = '#e8f5e9';
-                setTimeout(() => card.style.backgroundColor = 'white', 500);
-
-                // Update Status Class
-                card.className = `card ${data.status}`;
-
-                // Update Score
-                const scoreDiv = card.querySelector('.score');
-                const scoreA = data.scoreSummary.team_a || 0;
-                const scoreB = data.scoreSummary.team_b || 0;
-                scoreDiv.textContent = `${scoreA} - ${scoreB}`;
-
-                // Update Status Text
-                const statusSpan = card.querySelector('.status');
-                statusSpan.textContent = `● ${data.status.toUpperCase()}`;
-
-                log(`Updated Match ${data.matchId}: ${scoreA}-${scoreB}`, 'success');
+        log(`📤 SENDING: ${runs} runs${isWicket ? ' + Wicket' : ''}...`);
+        
+        socket.emit('submit_cricket_ball', payload, (res) => {
+            if (res.status === 'ok') {
+                log("✅ SERVER ACKNOWLEDGED: Score stored in DB.");
+                // Manual ball increment for demo
+                if (ball < 6) document.getElementById('ball').value = ball + 1;
+                else {
+                    document.getElementById('over').value = over + 1;
+                    document.getElementById('ball').value = 1;
+                }
             } else {
-                // If match not in grid (maybe newly created), reload grid
-                log(`New match update received for ${data.matchId}, reloading...`);
-                // reloadMatches(); // Optional: Implement reload
+                log(`❌ SERVER REJECTED: ${res.message}`, "error");
             }
+        });
+    }
+
+    function updateUI(scoreDetails) {
+        // Just pick the first team in the score object for display
+        const teamIds = Object.keys(scoreDetails);
+        if (teamIds.length > 0) {
+            const teamA = scoreDetails[teamIds[0]];
+            document.getElementById('score-display').innerText = `${teamA.runs}/${teamA.wickets}`;
+            document.getElementById('over-display').innerText = `(${teamA.overs || '0.0'} Overs)`;
         }
-
-        function connectSocket() {
-            if (socket) return;
-
-            socket = io(API_URL);
-            const statusSpan = document.getElementById('connection-status');
-
-            socket.on('connect', () => {
-                statusSpan.textContent = "● Connected";
-                statusSpan.style.color = "green";
-                log("Socket Connected", "success");
-
-                // JOIN THE OVERVIEW ROOM
-                socket.emit('join_overview');
-                log("Joined 'live_overview' room", "success");
-            });
-
-            socket.on('disconnect', () => {
-                statusSpan.textContent = "● Disconnected";
-                statusSpan.style.color = "red";
-                log("Socket Disconnected", "error");
-            });
-
-            socket.on('overview_update', (data) => {
-                updateMatchCard(data);
-            });
-        }
-
-        function log(msg, type = 'info') {
-            const logDiv = document.getElementById('log');
-            const p = document.createElement('div');
-            p.textContent = `> ${msg}`;
-            if (type === 'error') p.style.color = 'red';
-            logDiv.prepend(p);
-        }
-    </script>
+    }
+</script>
 </body>
-
 </html>
+
