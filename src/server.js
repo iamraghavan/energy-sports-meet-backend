@@ -1,6 +1,7 @@
 const app = require('./app');
 const sequelize = require('./config/database');
 const logger = require('./utils/logger');
+const runMigrations = require('../scripts/run_migrations');
 const http = require('http');
 const { Server } = require('socket.io');
 const dns = require('dns');
@@ -46,7 +47,10 @@ async function startServer() {
         await sequelize.authenticate();
         logger.info('✅ Database connection has been established successfully.');
 
-        // Sync: Standard sync after manual column fix
+        // 1. Run safe migrations first
+        await runMigrations();
+
+        // 2. Sync: Standard sync for remaining model mappings
         await sequelize.sync();
         logger.info('✅ Database synchronized successfully.');
     } catch (error) {
