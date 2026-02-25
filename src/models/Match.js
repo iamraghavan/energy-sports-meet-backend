@@ -44,6 +44,11 @@ const Match = sequelize.define('Match', {
         type: DataTypes.JSON,
         defaultValue: []
     },
+    // Transient state: { striker_id, non_striker_id, bowler_id, current_innings: 1 }
+    match_state: {
+        type: DataTypes.JSON,
+        defaultValue: {}
+    },
     winner_id: {
         type: DataTypes.UUID,
         allowNull: true

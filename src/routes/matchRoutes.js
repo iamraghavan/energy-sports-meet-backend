@@ -28,4 +28,7 @@ router.post('/:matchId/lineup', protect, authorize('super_admin', 'scorer'), mat
 // Payload: { event_type: 'run', value: 4, key: 'runs', team_id: '...', player_id: '...' }
 router.post('/:matchId/event', protect, authorize('super_admin', 'scorer'), matchController.updateMatchEvent);
 
+// Match State (Striker, Bowler, etc.)
+router.post('/:matchId/state', protect, authorize('super_admin', 'scorer'), matchController.updateMatchState);
+
 module.exports = router;

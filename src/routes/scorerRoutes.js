@@ -33,6 +33,7 @@ router.put('/matches/:matchId/score', matchController.updateScore);
 // Specialized Scoring
 router.post('/matches/:matchId/score/standard', matchController.updateScoreStandard);
 router.post('/matches/:matchId/score/cricket', matchController.updateScoreCricket);
+router.post('/matches/:matchId/state', matchController.updateMatchState);
 
 router.post('/matches/:matchId/end', (req, res, next) => {
     req.body = req.body || {}; // Fix: Handle empty body

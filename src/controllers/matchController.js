@@ -336,3 +336,35 @@ exports.getScorerTeamDetails = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// Update Match Transient State (Striker, Bowler, etc.)
+exports.updateMatchState = async (req, res) => {
+    try {
+        const { matchId } = req.params;
+        const { striker_id, non_striker_id, bowler_id, current_innings } = req.body;
+
+        const match = await Match.findByPk(matchId);
+        if (!match) return res.status(404).json({ error: 'Match not found' });
+
+        const newState = {
+            ...(match.match_state || {}),
+            striker_id: striker_id || (match.match_state?.striker_id),
+            non_striker_id: non_striker_id || (match.match_state?.non_striker_id),
+            bowler_id: bowler_id || (match.match_state?.bowler_id),
+            current_innings: current_innings || (match.match_state?.current_innings || 1),
+            updatedAt: new Date()
+        };
+
+        match.match_state = newState;
+        match.changed('match_state', true);
+        await match.save();
+
+        // Broadcast to all viewers
+        const io = req.app.get('io');
+        io.to(matchId).emit('match_state_updated', { matchId, state: newState });
+
+        res.json({ message: 'Match state updated', state: newState });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
