@@ -220,19 +220,28 @@ exports.getMatchLineup = async (req, res) => {
     }
 };
 
-// Update Lineup (Add/Remove Player)
+// Update Lineup (Add/Remove Player or Bulk Update)
 exports.updateLineup = async (req, res) => {
     try {
         const { matchId } = req.params;
-        const { action, student_id } = req.body;
-        
-        await matchService.updateLineup(matchId, req.body);
-
-        // Emit Socket Event
+        const { players, action, student_id } = req.body;
         const io = req.app.get('io');
-        io.to(matchId).emit('lineup_updated', { matchId, action, student_id });
 
-        res.json({ message: 'Lineup updated' });
+        if (Array.isArray(players) && players.length > 0) {
+            // 1. Handle Bulk Update
+            const newLineup = await matchService.bulkUpdateLineup(matchId, req.body);
+            
+            // Broadcast Full Update
+            io.to(matchId).emit('lineup_updated', { matchId, lineup: newLineup, type: 'bulk' });
+            return res.json({ message: 'Lineup bulk updated', count: newLineup.length });
+        } else {
+            // 2. Handle Single Player (Add/Remove)
+            await matchService.updateLineup(matchId, req.body);
+            
+            // Broadcast Single Change
+            io.to(matchId).emit('lineup_updated', { matchId, action, student_id, type: 'single' });
+            return res.json({ message: 'Lineup updated' });
+        }
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
