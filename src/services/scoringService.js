@@ -142,6 +142,10 @@ exports.processCricketBall = async (matchId, data, transaction) => {
             const bowlerRuns = runsScored + (['wide', 'noball'].includes(extra_type) ? extraRuns : 0);
             s.runs_conceded = (s.runs_conceded || 0) + bowlerRuns;
             
+            if (extra_type !== 'wide' && extra_type !== 'noball') {
+                s.balls_bowled = (s.balls_bowled || 0) + 1;
+            }
+            
             if (is_wicket && wicket_type !== 'runout') {
                 s.wickets = (s.wickets || 0) + 1;
             }
