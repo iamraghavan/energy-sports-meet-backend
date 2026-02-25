@@ -69,3 +69,6 @@
 2026-02-25 20:01:15:115 info: 🔌 New client connected: Xi1uK_g5tKEoCn2OAAAJ
 2026-02-25 20:01:15:115 info: 🏠 Socket joined match room | {"socketId":"Xi1uK_g5tKEoCn2OAAAJ","matchId":"01ad168a-a04e-4f4b-be19-a041601599d6"}
 2026-02-25 20:01:16:116 info: 🔌 Client disconnected: Xi1uK_g5tKEoCn2OAAAJ
+2026-02-25 20:58:18:5818 info: 🔍 Checking for match_state column in matches table...
+2026-02-25 20:58:18:5818 info: ➕ Column match_state not found. Adding it now...
+2026-02-25 20:58:19:5819 info: ✅ Column match_state added successfully!
