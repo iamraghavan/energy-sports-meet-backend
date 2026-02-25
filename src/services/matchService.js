@@ -217,3 +217,25 @@ exports.updateLineup = async (matchId, { action, student_id, team_id, is_substit
     }
     throw new Error('Invalid action for lineup update');
 };
+
+/**
+ * Update Toss Information
+ */
+exports.updateToss = async (matchId, { winner_id, decision, details }) => {
+    const match = await Match.findByPk(matchId);
+    if (!match) throw new Error('Match not found');
+
+    let state = { ...(match.match_state || {}) };
+    state.toss = {
+        winner_id,
+        decision, // 'bat', 'bowl', 'heads', 'tails', etc.
+        details,
+        updatedAt: new Date()
+    };
+
+    match.match_state = state;
+    match.changed('match_state', true);
+    await match.save();
+
+    return match;
+};

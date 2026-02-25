@@ -257,6 +257,25 @@ module.exports = (io) => {
             }
         });
 
+        socket.on('update_toss', async (payload, callback) => {
+            const { matchId, winner_id, decision, details } = payload;
+            try {
+                const match = await matchService.updateToss(matchId, { winner_id, decision, details });
+                
+                io.to(matchId).emit('toss_updated', { matchId, toss: match.match_state.toss });
+                io.to('live_overview').emit('overview_update', { 
+                    matchId, 
+                    score: match.score_details, 
+                    action: 'toss_updated' 
+                });
+
+                logger.info(`🏏 [Socket] Toss Updated`, { matchId, winner_id, decision });
+                if (callback) callback({ status: 'ok', toss: match.match_state.toss });
+            } catch (error) {
+                if (callback) callback({ status: 'error', message: error.message });
+            }
+        });
+
         socket.on('disconnect', () => {
             logger.info(`🔌 Client disconnected: ${socket.id}`);
         });

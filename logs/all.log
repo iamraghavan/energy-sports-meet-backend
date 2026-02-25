@@ -65,3 +65,7 @@
 2026-02-25 19:04:00:40 info: 🔌 Client disconnected: 2yCyGX7d2gT8LRTOAAAF
 2026-02-25 19:04:10:410 info: 🔌 New client connected: lZ5nU0uDQUYRF1IkAAAH
 2026-02-25 19:04:10:410 info: 🏠 Socket joined match room | {"socketId":"lZ5nU0uDQUYRF1IkAAAH","matchId":"01ad168a-a04e-4f4b-be19-a041601599d6"}
+2026-02-25 20:01:14:114 info: 🔌 Client disconnected: lZ5nU0uDQUYRF1IkAAAH
+2026-02-25 20:01:15:115 info: 🔌 New client connected: Xi1uK_g5tKEoCn2OAAAJ
+2026-02-25 20:01:15:115 info: 🏠 Socket joined match room | {"socketId":"Xi1uK_g5tKEoCn2OAAAJ","matchId":"01ad168a-a04e-4f4b-be19-a041601599d6"}
+2026-02-25 20:01:16:116 info: 🔌 Client disconnected: Xi1uK_g5tKEoCn2OAAAJ
