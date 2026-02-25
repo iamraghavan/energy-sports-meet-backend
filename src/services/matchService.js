@@ -239,3 +239,39 @@ exports.updateToss = async (matchId, { winner_id, decision, details }) => {
 
     return match;
 };
+
+/**
+ * Bulk Update Match Lineup
+ */
+exports.bulkUpdateLineup = async (matchId, { players, team_id }) => {
+    const t = await sequelize.transaction();
+    try {
+        const match = await Match.findByPk(matchId, { transaction: t });
+        if (!match) throw new Error('Match not found');
+
+        // 1. Clear existing players for this match
+        // If team_id is provided, only clear that team's players
+        const whereClause = { match_id: matchId };
+        if (team_id) whereClause.team_id = team_id;
+        
+        await MatchPlayer.destroy({ where: whereClause, transaction: t });
+
+        // 2. Prepare new players data
+        const playersData = players.map(p => ({
+            match_id: matchId,
+            team_id: p.team_id || team_id || (p.player_id === match.team_a_id ? match.team_a_id : match.team_b_id), // Fallback logic
+            student_id: p.player_id || p.student_id,
+            is_substitute: p.is_substitute || false,
+            performance_stats: {}
+        }));
+
+        // 3. Bulk Create
+        const lineup = await MatchPlayer.bulkCreate(playersData, { transaction: t });
+
+        await t.commit();
+        return lineup;
+    } catch (error) {
+        if (t) await t.rollback();
+        throw error;
+    }
+};
