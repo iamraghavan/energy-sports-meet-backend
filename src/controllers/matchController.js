@@ -227,6 +227,13 @@ exports.updateLineup = async (req, res) => {
         const { players, action, student_id } = req.body;
         const io = req.app.get('io');
 
+        logger.info(`📋 [Lineup] Request for Match ${matchId}`, { 
+            hasPlayers: !!players, 
+            isPlayersArray: Array.isArray(players),
+            playersCount: Array.isArray(players) ? players.length : 0,
+            action 
+        });
+
         if (Array.isArray(players) && players.length > 0) {
             // 1. Handle Bulk Update
             const newLineup = await matchService.bulkUpdateLineup(matchId, req.body);
