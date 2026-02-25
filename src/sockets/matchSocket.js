@@ -86,7 +86,12 @@ module.exports = (io) => {
                 });
                 
                 // Broadcast to overview
-                io.to('live_overview').emit('overview_update', { matchId, score: match.score_details });
+                io.to('live_overview').emit('overview_update', { 
+                    matchId, 
+                    score: match.score_details,
+                    status: match.status,
+                    action: 'score_update'
+                });
 
                 logger.info(`✅ [Socket] Cricket score updated`, { matchId, socketId: socket.id, payload });
                 if (callback) callback({ status: 'ok', matchId });
@@ -108,7 +113,12 @@ module.exports = (io) => {
 
                 // Broadcast
                 io.to(matchId).emit('score_updated', { matchId, score: match.score_details, event: newEvent });
-                io.to('live_overview').emit('overview_update', { matchId, score: match.score_details });
+                io.to('live_overview').emit('overview_update', { 
+                    matchId, 
+                    score: match.score_details,
+                    status: match.status,
+                    action: 'score_update'
+                });
 
                 logger.info(`✅ [Socket] Standard score updated`, { matchId, socketId: socket.id, payload });
                 if (callback) callback({ status: 'ok', matchId });
@@ -138,8 +148,9 @@ module.exports = (io) => {
                 io.to('live_overview').emit('overview_update', {
                     matchId,
                     sportId: match.sport_id,
-                    scoreSummary: match.score_details,
-                    status: match.status
+                    score: match.score_details, // Standardized key
+                    status: match.status,
+                    action: 'status_update'
                 });
 
                 logger.info(`✅ [Socket] Match status updated`, { matchId, status: match.status, socketId: socket.id, payload });

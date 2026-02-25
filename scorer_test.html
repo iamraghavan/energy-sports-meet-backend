@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Scorer - Test Tool (v3)</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; padding: 20px; }
+        .card { background: #1e293b; padding: 20px; border-radius: 12px; max-width: 600px; margin: auto; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        h1 { font-size: 1.5rem; color: #38bdf8; margin-bottom: 20px; text-align: center; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #94a3b8; }
+        input, select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
+        .btn { padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; width: 100%; margin-top: 10px; }
+        .btn-primary { background: #38bdf8; color: #0f172a; }
+        .btn-success { background: #22c55e; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .status { text-align: center; margin: 15px 0; font-size: 1.1rem; font-weight: 800; border: 1px solid #334155; padding: 10px; border-radius: 8px; }
+        .log { background: #000; color: #4ade80; padding: 10px; border-radius: 6px; font-family: monospace; height: 150px; overflow-y: auto; font-size: 0.8rem; margin-top: 20px; border: 1px solid #334155; }
+        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .controls-panel { 
+            position: relative; /* CRITICAL FIX */
+            border: 1px solid #334155; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-top: 20px; 
+            background: #111827;
+        }
+        .overlay { 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: rgba(15, 23, 42, 0.9); 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center; 
+            border-radius: 8px; 
+            z-index: 100;
+            text-align: center;
+        }
+        .pulse { animation: pulse-red 2s infinite; }
+        @keyframes pulse-red { 0% { color: #f8fafc; } 50% { color: #ef4444; } 100% { color: #f8fafc; } }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>🎮 Scorer Console (v3 - Stability)</h1>
+    
+    <div class="form-group">
+        <label>1. Server URL</label>
+        <input type="text" id="backendUrl" value="http://localhost:8080">
+    </div>
+
+    <div class="form-group">
+        <label>2. Match ID (UUID)</label>
+        <input type="text" id="matchId" placeholder="Enter the ID of the match to score">
+    </div>
+
+    <button id="btnConnect" class="btn btn-primary" onclick="connect()">Connect & Start Scoring</button>
+
+    <div id="status" class="status" style="color: #ef4444;">🔴 NOT CONNECTED</div>
+
+    <div class="controls-panel" id="controlsPanel">
+        <div id="connectionOverlay" class="overlay">
+            <div class="pulse" style="font-weight: bold; margin-bottom: 10px;">⚠️ AUTH REQUIRED</div>
+            <div style="color: #94a3b8; font-size: 0.8rem; padding: 0 20px;">
+                You must enter a Match ID and click the blue "Connect" button above to unlock these controls.
+            </div>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <label>Team UUID (The team scoring)</label>
+            <input type="text" id="teamId" placeholder="Paste Team ID here">
+        </div>
+
+        <div class="actions">
+            <div>
+                <label>Points/Runs</label>
+                <input type="number" id="points" value="1">
+            </div>
+            <div>
+                <label>Options</label>
+                <select id="sportType">
+                    <option value="standard">Standard (Football/Goals)</option>
+                    <option value="cricket">Cricket (Runs)</option>
+                </select>
+            </div>
+        </div>
+
+        <button class="btn btn-success" id="btnSubmit" onclick="handleSubmit()" style="margin-top: 20px;">Submit Score Update</button>
+        
+        <div class="actions">
+            <button class="btn btn-danger" id="btnLive" onclick="sendMatchStatus('live')">Go LIVE</button>
+            <button class="btn btn-danger" id="btnEnd" onclick="sendMatchStatus('completed')">Finish Match</button>
+        </div>
+    </div>
+
+    <div id="log" class="log">Ready to connect...</div>
+</div>
+
+<script>
+    let socket;
+    const logEl = document.getElementById('log');
+    const statusEl = document.getElementById('status');
+    const overlay = document.getElementById('connectionOverlay');
+
+    function log(msg, isError = false) {
+        const time = new Date().toLocaleTimeString();
+        const color = isError ? '#f87171' : '#4ade80';
+        logEl.innerHTML += `<div style="color: ${color}">[${time}] ${msg}</div>`;
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function connect() {
+        const url = document.getElementById('backendUrl').value.trim();
+        const matchId = document.getElementById('matchId').value.trim();
+
+        if (!matchId) {
+            log('❌ Error: Match ID is empty!', true);
+            return alert('Please enter a Match ID before connecting.');
+        }
+
+        if (socket) socket.disconnect();
+
+        log(`Connecting to ${url}...`);
+
+        socket = io(url, {
+            transports: ['polling', 'websocket'],
+            path: '/socket.io',
+            reconnectionAttempts: 3,
+            timeout: 5000
+        });
+
+        socket.on('connect', () => {
+            statusEl.innerHTML = '🟢 CONNECTED & READY';
+            statusEl.style.color = '#22c55e';
+            statusEl.style.borderColor = '#22c55e';
+            log('✅ SUCCESS: Connected to backend!');
+            
+            socket.emit('join_match', matchId);
+            log(`🏠 Joined Match Room: ${matchId}`);
+            
+            // UNLOCK UI
+            overlay.style.display = 'none';
+        });
+
+        socket.on('disconnect', (reason) => {
+            statusEl.innerHTML = '🔴 DISCONNECTED';
+            statusEl.style.color = '#ef4444';
+            statusEl.style.borderColor = '#334155';
+            log(`⚠️ Disconnected: ${reason}`, true);
+            overlay.style.display = 'flex';
+        });
+
+        socket.on('connect_error', (err) => {
+            log(`❌ Connection Failed: ${err.message}`, true);
+            if(err.message === 'xhr poll error') log('Suggestion: Check if your backend is actually running at ' + url, true);
+        });
+    }
+
+    function handleSubmit() {
+        const type = document.getElementById('sportType').value;
+        if (type === 'cricket') sendCricketRun();
+        else sendStandardScore();
+    }
+
+    function sendStandardScore() {
+        const matchId = document.getElementById('matchId').value;
+        const teamId = document.getElementById('teamId').value;
+        const pts = parseInt(document.getElementById('points').value);
+
+        if (!teamId) return alert('Enter a Team ID');
+
+        log(`Sending Standard Score for Team: ${teamId}...`);
+        socket.emit('submit_standard_score', {
+            matchId,
+            team_id: teamId,
+            points: pts,
+            event_type: 'point'
+        }, (res) => {
+            log(`Server Response: ${JSON.stringify(res)}`);
+        });
+    }
+
+    function sendCricketRun() {
+        const matchId = document.getElementById('matchId').value;
+        const teamId = document.getElementById('teamId').value;
+        const runs = parseInt(document.getElementById('points').value);
+
+        if (!teamId) return alert('Enter a Team ID');
+
+        log(`Sending Cricket runs for Team: ${teamId}...`);
+        socket.emit('submit_cricket_ball', {
+            matchId,
+            batting_team_id: teamId,
+            runs: runs,
+            over_number: 1.0 
+        }, (res) => {
+            log(`Server Response: ${JSON.stringify(res)}`);
+        });
+    }
+
+    function sendMatchStatus(status) {
+        const matchId = document.getElementById('matchId').value;
+        log(`Broadcasting Status Change: ${status}...`);
+        socket.emit('update_match_status', {
+            matchId,
+            status: status
+        }, (res) => {
+            log(`Server Response: ${JSON.stringify(res)}`);
+        });
+    }
+</script>
+
+</body>
+</html>

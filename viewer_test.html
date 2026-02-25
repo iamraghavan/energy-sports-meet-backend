@@ -1,0 +1,127 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Live Score Viewer - Public Test</title>
+        <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; padding: 20px; text-align: center; }
+            .match-card { background: #1e293b; padding: 30px; border-radius: 16px; max-width: 500px; margin: auto; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #334155; }
+            .sport-badge { background: #38bdf8; color: #0f172a; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; margin-bottom: 15px; display: inline-block; }
+            .score-display { font-size: 4rem; font-weight: 800; margin: 20px 0; color: #fff; letter-spacing: -2px; }
+            .status-badge { font-size: 0.9rem; margin-top: 10px; }
+            .live-dot { height: 10px; width: 10px; background-color: #ef4444; border-radius: 50%; display: inline-block; margin-right: 5px; animation: pulse 1.5s infinite; }
+            @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+            .input-box { margin-bottom: 20px; }
+            input { padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: white; width: 80%; max-width: 300px; text-align: center; }
+            .btn { padding: 10px 20px; background: #38bdf8; border: none; border-radius: 6px; cursor: pointer; color: #0f172a; font-weight: bold; margin-top: 10px; }
+        </style>
+    </head>
+    <body>
+
+    <div class="input-box">
+        <input type="text" id="matchIdInput" placeholder="Enter Match ID (UUID) to follow">
+        <button class="btn" onclick="followMatch()">Follow Match</button>
+    </div>
+
+    <div class="match-card" id="viewerCard" style="display: none;">
+        <div class="sport-badge" id="sportName">Match Update</div>
+        <div id="statusLabel" class="status-badge"><span class="live-dot"></span> LIVE</div>
+        
+        <div id="standardScore" class="score-display">0 - 0</div>
+        
+        <div id="cricketScore" style="display: none;">
+            <div class="score-display"><span id="runs">0</span> / <span id="wickets">0</span></div>
+            <div style="color: #94a3b8;">Overs: <span id="overs">0.0</span></div>
+        </div>
+
+        <div style="margin-top: 20px; color: #94a3b8; font-size: 0.8rem;">
+            Last Updated: <span id="lastUpdated">-</span>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        const BACKEND_URL = "http://localhost:8080";
+
+        function followMatch() {
+            const matchId = document.getElementById('matchIdInput').value;
+            if (!matchId) return alert('Enter a Match ID');
+
+            if (socket) socket.disconnect();
+
+            socket = io(BACKEND_URL, {
+                transports: ['polling', 'websocket'],
+                path: '/socket.io'
+            });
+
+            socket.on('connect', () => {
+                console.log('Connected to viewer socket');
+                socket.emit('join_match', matchId);
+                document.getElementById('viewerCard').style.display = 'block';
+            });
+
+            // Listen for Standard Sports (Football, etc.)
+            socket.on('score_updated', (data) => {
+                console.log('Score Update:', data);
+                updateUI(data);
+            });
+
+            // Listen for Cricket
+            socket.on('cricket_score_update', (data) => {
+                console.log('Cricket Update:', data);
+                updateCricketUI(data);
+            });
+
+            socket.on('match_deleted', () => {
+                alert('Match has been deleted by an official.');
+                location.reload();
+            });
+        }
+
+        function updateUI(data) {
+            const scores = data.score || data.scoreDetails;
+            if (!scores) return;
+
+            // Simple logic for 2 teams
+            const keys = Object.keys(scores);
+            if (keys.length >= 2) {
+                const scoreA = scores[keys[0]].score || 0;
+                const scoreB = scores[keys[1]].score || 0;
+                document.getElementById('standardScore').innerText = `${scoreA} - ${scoreB}`;
+            } else if (keys.length === 1) {
+                document.getElementById('standardScore').innerText = `${scores[keys[0]].score || 0}`;
+            }
+
+            document.getElementById('standardScore').style.display = 'block';
+            document.getElementById('cricketScore').style.display = 'none';
+            document.getElementById('lastUpdated').innerText = new Date().toLocaleTimeString();
+            
+            if (data.status) {
+                document.getElementById('statusLabel').innerHTML = data.status === 'live' 
+                    ? '<span class="live-dot"></span> LIVE' 
+                    : data.status.toUpperCase();
+            }
+        }
+
+        function updateCricketUI(data) {
+            const scores = data.score;
+            if (!scores) return;
+
+            // Find the active batting team (first one for demo)
+            const teamId = Object.keys(scores)[0];
+            const stats = scores[teamId];
+
+            document.getElementById('runs').innerText = stats.runs || 0;
+            document.getElementById('wickets').innerText = stats.wickets || 0;
+            document.getElementById('overs').innerText = stats.overs || '0.0';
+
+            document.getElementById('standardScore').style.display = 'none';
+            document.getElementById('cricketScore').style.display = 'block';
+            document.getElementById('lastUpdated').innerText = new Date().toLocaleTimeString();
+        }
+    </script>
+
+    </body>
+    </html>

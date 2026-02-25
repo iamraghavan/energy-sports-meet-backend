@@ -148,6 +148,16 @@ app.get('/match-test', (req, res) => {
     res.sendFile(require('path').join(__dirname, '../test_socket.html'));
 });
 
+// Serve WebSocket Scorer Test
+app.get('/scorer-test', (req, res) => {
+    res.sendFile(require('path').join(__dirname, '../scorer_test.html'));
+});
+
+// Serve WebSocket Viewer Test
+app.get('/viewer-test', (req, res) => {
+    res.sendFile(require('path').join(__dirname, '../viewer_test.html'));
+});
+
 // [DEBUG] GET /api/logs - Serve all.log for remote debugging
 app.get('/api/logs', (req, res) => {
     const fs = require('fs');

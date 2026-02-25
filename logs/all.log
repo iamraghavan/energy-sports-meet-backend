@@ -42,3 +42,26 @@
 2026-02-22 20:36:55:3655 info: ✅ [Socket] Cricket score updated | {"matchId":"fc21510b-bcfa-4b75-994b-f8e0195349d3","socketId":"pkAlOb5J2OauG4xrAAAB","payload":{"matchId":"fc21510b-bcfa-4b75-994b-f8e0195349d3","runs":1,"is_wicket":false,"batting_team_id":"TEAM_ID_HERE","over_number":0,"ball_number":1,"extra_type":null,"extras":0}}
 2026-02-22 20:38:01:381 info: 🏏 Cricket Logic: Team TEAM_ID_HERE +0 runs
 2026-02-22 20:38:01:381 info: ✅ [Socket] Cricket score updated | {"matchId":"fc21510b-bcfa-4b75-994b-f8e0195349d3","socketId":"pkAlOb5J2OauG4xrAAAB","payload":{"matchId":"fc21510b-bcfa-4b75-994b-f8e0195349d3","runs":0,"is_wicket":true,"batting_team_id":"TEAM_ID_HERE","over_number":0,"ball_number":2,"extra_type":null,"extras":0}}
+2026-02-25 17:23:22:2322 info: 🚀 Server (HTTP + Socket) is running on port 8080 (Bound to 0.0.0.0)
+2026-02-25 17:23:23:2323 info: ✅ Database connection has been established successfully.
+2026-02-25 17:23:24:2324 info: ✅ Database synchronized successfully.
+2026-02-25 17:23:53:2353 info: 🔌 New client connected: CLoIKVH7zrdslAHfAAAB
+2026-02-25 17:23:54:2354 info: 🏠 Socket joined match room | {"socketId":"CLoIKVH7zrdslAHfAAAB","matchId":"01ad168a-a04e-4f4b-be19-a041601599d6"}
+2026-02-25 18:37:58:3758 info: 🚀 Server (HTTP + Socket) is running on port 8080 (Bound to 0.0.0.0)
+2026-02-25 18:37:59:3759 info: ✅ Database connection has been established successfully.
+2026-02-25 18:38:00:380 info: ✅ Database synchronized successfully.
+2026-02-25 18:38:42:3842 info: 🔌 New client connected: _JlKuDq2OzBYAf93AAAB
+2026-02-25 18:38:43:3843 info: 🏠 Socket joined match room | {"socketId":"_JlKuDq2OzBYAf93AAAB","matchId":"01ad168a-a04e-4f4b-be19-a041601599d6"}
+2026-02-25 18:41:35:4135 info: 🔌 New client connected: JgbLrEv7I7Ng_KYYAAAD
+2026-02-25 18:41:36:4136 info: 🏠 Socket joined match room | {"socketId":"JgbLrEv7I7Ng_KYYAAAD","matchId":"01ad168a-a04e-4f4b-be19-a041601599d6"}
+2026-02-25 18:42:21:4221 info: ✅ [Socket] Match status updated | {"matchId":"01ad168a-a04e-4f4b-be19-a041601599d6","status":"live","socketId":"JgbLrEv7I7Ng_KYYAAAD","payload":{"matchId":"01ad168a-a04e-4f4b-be19-a041601599d6","status":"live"}}
+2026-02-25 18:42:26:4226 info: 🔌 Client disconnected: _JlKuDq2OzBYAf93AAAB
+2026-02-25 18:42:28:4228 info: 🔌 New client connected: 2yCyGX7d2gT8LRTOAAAF
+2026-02-25 18:42:28:4228 info: 🏠 Socket joined match room | {"socketId":"2yCyGX7d2gT8LRTOAAAF","matchId":"01ad168a-a04e-4f4b-be19-a041601599d6"}
+2026-02-25 18:42:31:4231 info: 🏏 Cricket Logic: Team 4085b666-b7b8-4523-b351-d7911ce8db1c +1 runs
+2026-02-25 18:42:31:4231 info: ✅ [Socket] Cricket score updated | {"matchId":"01ad168a-a04e-4f4b-be19-a041601599d6","socketId":"JgbLrEv7I7Ng_KYYAAAD","payload":{"matchId":"01ad168a-a04e-4f4b-be19-a041601599d6","batting_team_id":"4085b666-b7b8-4523-b351-d7911ce8db1c","runs":1,"over_number":1}}
+2026-02-25 18:42:37:4237 info: 🏏 Cricket Logic: Team 4085b666-b7b8-4523-b351-d7911ce8db1c +10 runs
+2026-02-25 18:42:38:4238 info: ✅ [Socket] Cricket score updated | {"matchId":"01ad168a-a04e-4f4b-be19-a041601599d6","socketId":"JgbLrEv7I7Ng_KYYAAAD","payload":{"matchId":"01ad168a-a04e-4f4b-be19-a041601599d6","batting_team_id":"4085b666-b7b8-4523-b351-d7911ce8db1c","runs":10,"over_number":1}}
+2026-02-25 19:04:00:40 info: 🔌 Client disconnected: 2yCyGX7d2gT8LRTOAAAF
+2026-02-25 19:04:10:410 info: 🔌 New client connected: lZ5nU0uDQUYRF1IkAAAH
+2026-02-25 19:04:10:410 info: 🏠 Socket joined match room | {"socketId":"lZ5nU0uDQUYRF1IkAAAH","matchId":"01ad168a-a04e-4f4b-be19-a041601599d6"}
