@@ -341,7 +341,7 @@ exports.getScorerTeamDetails = async (req, res) => {
 exports.updateMatchState = async (req, res) => {
     try {
         const { matchId } = req.params;
-        const { striker_id, non_striker_id, bowler_id, current_innings } = req.body;
+        const { striker_id, non_striker_id, bowler_id, batting_team_id, current_innings } = req.body;
 
         const match = await Match.findByPk(matchId);
         if (!match) return res.status(404).json({ error: 'Match not found' });
@@ -351,6 +351,7 @@ exports.updateMatchState = async (req, res) => {
             striker_id: striker_id || (match.match_state?.striker_id),
             non_striker_id: non_striker_id || (match.match_state?.non_striker_id),
             bowler_id: bowler_id || (match.match_state?.bowler_id),
+            batting_team_id: batting_team_id || (match.match_state?.batting_team_id),
             current_innings: current_innings || (match.match_state?.current_innings || 1),
             updatedAt: new Date()
         };
