@@ -154,3 +154,97 @@ exports.processCricketBall = async (matchId, data, transaction) => {
 
     return { match, ballEvent };
 };
+
+/**
+ * Undo the last event in a match
+ */
+exports.undoLastEvent = async (matchId) => {
+    const t = await sequelize.transaction();
+    try {
+        const match = await Match.findByPk(matchId, { transaction: t });
+        if (!match) throw new Error('Match not found');
+
+        const events = [...(match.match_events || [])];
+        if (events.length === 0) throw new Error('No events to undo');
+
+        const lastEvent = events.pop();
+        logger.info(`◀️ Undoing last event: ${lastEvent.event_type}`, { matchId });
+
+        // Reverse Score Impact
+        let score = { ...(match.score_details || {}) };
+        if (lastEvent.event_type === 'delivery') {
+            // Cricket Undo
+            const tid = lastEvent.batting_team_id;
+            if (score[tid]) {
+                score[tid].runs -= (lastEvent.runs || 0) + (lastEvent.extras || 0);
+                if (lastEvent.is_wicket) score[tid].wickets -= 1;
+            }
+        } else if (lastEvent.event_type === 'score' || lastEvent.event_type === 'goal' || lastEvent.event_type === 'point') {
+            // Standard Undo
+            const tid = lastEvent.team_id;
+            if (score[tid]) {
+                score[tid].score -= (lastEvent.value || 0);
+            }
+        }
+
+        match.match_events = events;
+        match.score_details = score;
+        match.changed('match_events', true);
+        match.changed('score_details', true);
+
+        await match.save({ transaction: t });
+        await t.commit();
+
+        return match;
+    } catch (error) {
+        if (t) await t.rollback();
+        throw error;
+    }
+};
+
+/**
+ * Update Match Timer State
+ */
+exports.updateTimer = async (matchId, timerData) => {
+    const match = await Match.findByPk(matchId);
+    if (!match) throw new Error('Match not found');
+
+    let score = { ...(match.score_details || {}) };
+    score.timer = {
+        ...(score.timer || {}),
+        ...timerData,
+        updatedAt: new Date()
+    };
+
+    match.score_details = score;
+    match.changed('score_details', true);
+    await match.save();
+
+    return match;
+};
+
+/**
+ * Record a Card (Yellow/Red)
+ */
+exports.processCard = async (matchId, data) => {
+    const { team_id, player_id, card_type, minute } = data;
+    const match = await Match.findByPk(matchId);
+    if (!match) throw new Error('Match not found');
+
+    const cardEvent = {
+        timestamp: new Date(),
+        event_type: 'card',
+        card_type, // 'yellow' | 'red'
+        team_id,
+        player_id,
+        minute,
+        details: `${card_type.toUpperCase()} Card issued to player ${player_id}`
+    };
+
+    const events = [...(match.match_events || []), cardEvent];
+    match.match_events = events;
+    match.changed('match_events', true);
+    await match.save();
+
+    return { match, cardEvent };
+};

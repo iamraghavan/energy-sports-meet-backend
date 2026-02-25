@@ -180,6 +180,83 @@ module.exports = (io) => {
             }
         });
 
+        // 7. Universal Timer Control
+        socket.on('timer_control', async (payload, callback) => {
+            const { matchId, action, currentTime } = payload; // action: 'start', 'pause', 'reset'
+            try {
+                const match = await scoringService.updateTimer(matchId, { action, currentTime });
+                
+                io.to(matchId).emit('timer_sync', { matchId, action, currentTime, timer: match.score_details.timer });
+                
+                logger.info(`⏱️ [Socket] Timer ${action}`, { matchId, currentTime });
+                if (callback) callback({ status: 'ok', timer: match.score_details.timer });
+            } catch (error) {
+                if (callback) callback({ status: 'error', message: error.message });
+            }
+        });
+
+        // 8. Issue Cards (Football, etc.)
+        socket.on('issue_card', async (payload, callback) => {
+            const { matchId } = payload;
+            try {
+                const { match, cardEvent } = await scoringService.processCard(matchId, payload);
+                
+                io.to(matchId).emit('card_issued', { matchId, card: cardEvent });
+                io.to('live_overview').emit('overview_update', { 
+                    matchId, 
+                    score: match.score_details, 
+                    action: 'card_issued' 
+                });
+
+                logger.info(`🟨 [Socket] Card issued`, { matchId, payload });
+                if (callback) callback({ status: 'ok' });
+            } catch (error) {
+                if (callback) callback({ status: 'error', message: error.message });
+            }
+        });
+
+        // 9. Undo/Correction
+        socket.on('undo_event', async (payload, callback) => {
+            const { matchId } = payload;
+            try {
+                const match = await scoringService.undoLastEvent(matchId);
+                
+                io.to(matchId).emit('event_undone', { 
+                    matchId, 
+                    score: match.score_details, 
+                    events: match.match_events 
+                });
+                io.to('live_overview').emit('overview_update', { 
+                    matchId, 
+                    score: match.score_details, 
+                    action: 'undo' 
+                });
+
+                logger.info(`◀️ [Socket] Event undone`, { matchId });
+                if (callback) callback({ status: 'ok', score: match.score_details });
+            } catch (error) {
+                if (callback) callback({ status: 'error', message: error.message });
+            }
+        });
+
+        // 10. Real-time Commentary
+        socket.on('add_commentary', async (payload, callback) => {
+            const { matchId, text } = payload;
+            try {
+                const match = await Match.findByPk(matchId);
+                const comm = { timestamp: new Date(), text };
+                match.match_events = [...(match.match_events || []), { event_type: 'commentary', ...comm }];
+                await match.save();
+
+                io.to(matchId).emit('commentary_added', { matchId, commentary: comm });
+                
+                logger.info(`💬 [Socket] Commentary added`, { matchId, text });
+                if (callback) callback({ status: 'ok' });
+            } catch (error) {
+                if (callback) callback({ status: 'error', message: error.message });
+            }
+        });
+
         socket.on('disconnect', () => {
             logger.info(`🔌 Client disconnected: ${socket.id}`);
         });
