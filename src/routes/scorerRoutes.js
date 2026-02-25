@@ -8,6 +8,7 @@ router.use(protect);
 router.use(authorize('super_admin', 'scorer'));
 
 // --- Match Management (CRUD) ---
+router.get('/matches', matchController.getLiveMatches);
 router.post('/matches', matchController.createMatch);
 router.get('/matches/:matchId', matchController.getMatchById); // View details
 router.put('/matches/:matchId', matchController.updateMatchDetails); // Update time/venue/referee

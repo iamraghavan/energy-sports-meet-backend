@@ -46,8 +46,8 @@ async function startServer() {
         await sequelize.authenticate();
         logger.info('✅ Database connection has been established successfully.');
 
-        // Sync: Using simple sync() instead of alter: true to avoid MariaDB 64-key limits in production
-        await sequelize.sync();
+        // Sync: Using alter: true temporarily to add missing columns like match_state
+        await sequelize.sync({ alter: true });
         logger.info('✅ Database synchronized successfully.');
     } catch (error) {
         console.error('DATABASE CONNECTION ERROR:', error.message);
