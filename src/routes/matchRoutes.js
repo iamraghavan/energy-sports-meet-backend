@@ -31,4 +31,7 @@ router.post('/:matchId/event', protect, authorize('super_admin', 'scorer'), matc
 // Match State (Striker, Bowler, etc.)
 router.post('/:matchId/state', protect, authorize('super_admin', 'scorer'), matchController.updateMatchState);
 
+// Toss Result
+router.post('/:matchId/toss', protect, authorize('super_admin', 'scorer'), matchController.updateToss);
+
 module.exports = router;

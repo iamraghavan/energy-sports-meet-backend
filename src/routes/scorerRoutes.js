@@ -45,4 +45,7 @@ router.post('/matches/:matchId/end', (req, res, next) => {
 // --- Dynamic Events (Ball-by-ball, Goals) ---
 router.post('/matches/:matchId/event', matchController.updateMatchEvent);
 
+// Toss Result
+router.post('/matches/:matchId/toss', matchController.updateToss);
+
 module.exports = router;

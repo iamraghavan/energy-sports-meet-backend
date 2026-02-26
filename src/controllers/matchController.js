@@ -385,3 +385,26 @@ exports.updateMatchState = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// Update Match Toss Result
+exports.updateToss = async (req, res) => {
+    try {
+        const { matchId } = req.params;
+        const { winner_id, decision, details } = req.body;
+
+        const match = await matchService.updateToss(matchId, { winner_id, decision, details });
+
+        // Socket Broadcast
+        const io = req.app.get('io');
+        io.to(matchId).emit('toss_updated', { matchId, toss: match.match_state.toss });
+        io.to('live_overview').emit('overview_update', { 
+            matchId, 
+            score: match.score_details, 
+            action: 'toss_updated' 
+        });
+
+        res.json({ message: 'Toss updated successfully', toss: match.match_state.toss });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
