@@ -61,6 +61,17 @@ exports.syncStatus = async (matchId, status) => {
 };
 
 exports.syncFullMatch = async (match) => {
+    // Ensure JSON fields are parsed if they come back as strings from DB
+    const parseJson = (val) => {
+        if (typeof val === 'string') {
+            try { return JSON.parse(val); } catch (e) { return {}; }
+        }
+        return val || {};
+    };
+
+    const scoreDetails = parseJson(match.score_details);
+    const matchState = parseJson(match.match_state);
+
     // Structure the data for the frontend
     const payload = {
         id: match.id,
@@ -80,9 +91,9 @@ exports.syncFullMatch = async (match) => {
             name: match.TeamB.team_name,
             college: match.TeamB.college_name
         } : null,
-        score_details: match.score_details || {},
-        match_state: match.match_state || {},
-        toss: match.match_state?.toss || null
+        score_details: scoreDetails,
+        match_state: matchState,
+        toss: matchState?.toss || null
     };
     await pushToFirebase(`sports/matches/${match.id}`, payload);
 };
