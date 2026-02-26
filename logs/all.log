@@ -80,3 +80,9 @@
 2026-02-25 21:00:18:018 info: ✅ Database synchronized successfully.
 2026-02-25 21:37:43:3743 info: 🚀 Starting Safe Migrations...
 2026-02-25 21:37:44:3744 info: ✔️ match_state already exists.
+2026-02-26 07:38:13:3813 info: 🚀 Server (HTTP + Socket) is running on port 8080 (Bound to 0.0.0.0)
+2026-02-26 07:38:14:3814 info: ✅ Database connection has been established successfully.
+2026-02-26 07:38:14:3814 info: 🚀 Starting Safe Migrations...
+2026-02-26 07:38:14:3814 info: ✔️ match_state already exists.
+2026-02-26 07:38:14:3814 info: 🏁 All migrations checked/applied.
+2026-02-26 07:38:15:3815 info: ✅ Database synchronized successfully.

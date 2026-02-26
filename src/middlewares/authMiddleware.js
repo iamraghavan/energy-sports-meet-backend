@@ -12,22 +12,22 @@ exports.protect = async (req, res, next) => {
             token = req.headers.authorization.split(' ')[1];
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-            // Get user from the token
             req.user = await User.findByPk(decoded.id);
 
             if (!req.user) {
                 return res.status(401).json({ error: 'User not found' });
             }
 
-            next();
+            return next();
         } catch (error) {
-            console.error('Auth Middleware Error:', error);
-            res.status(401).json({ error: 'Not authorized' });
+            console.error(`Auth Error [${req.method} ${req.url}]:`, error.message);
+            return res.status(401).json({ error: 'Not authorized' });
         }
     }
 
     if (!token) {
-        res.status(401).json({ error: 'Not authorized, no token' });
+        console.warn(`🔒 [401] No Token: ${req.method} ${req.url} | Headers: ${JSON.stringify(req.headers)}`);
+        return res.status(401).json({ error: 'Not authorized, no token' });
     }
 };
 
