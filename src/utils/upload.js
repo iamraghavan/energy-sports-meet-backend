@@ -16,7 +16,7 @@ const octokit = new Octokit({
 async function uploadToGitHub(file, folder = 'uploads') {
     try {
         const fileExtension = path.extname(file.originalname || file.name);
-        const fileName = `${folder}/${uuidv4()}${fileExtension}`;
+        const fileName = `${folder}/${crypto.randomUUID()}${fileExtension}`;
         const content = file.buffer.toString('base64');
 
         await octokit.repos.createOrUpdateFileContents({
