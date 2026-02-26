@@ -10,9 +10,9 @@ exports.createMatch = async (req, res) => {
     try {
         const match = await matchService.createMatch(req.body);
 
-        // Emit Socket Event
-        const io = req.app.get('io');
-        io.to('live_overview').emit('overview_update', { action: 'create', matchId: match.id, status: match.status });
+        // Sync with Firebase
+        const firebaseSyncService = require('../services/firebaseSyncService');
+        await firebaseSyncService.syncStatus(match.id, match.status);
 
         res.status(201).json(match);
     } catch (error) {
@@ -26,10 +26,12 @@ exports.updateMatchDetails = async (req, res) => {
         const { matchId } = req.params;
         const match = await matchService.updateMatchDetails(matchId, req.body);
 
-        // Emit Socket Events
-        const io = req.app.get('io');
-        io.to(matchId).emit('match_details_updated', match);
-        io.to('live_overview').emit('overview_update', { action: 'update', matchId, status: match.status });
+        // Sync with Firebase
+        const firebaseSyncService = require('../services/firebaseSyncService');
+        await firebaseSyncService.syncMatchUpdate(matchId, {
+            status: match.status,
+            ...req.body
+        });
 
         res.json({ message: 'Match details updated', match });
     } catch (error) {
@@ -43,10 +45,9 @@ exports.deleteMatch = async (req, res) => {
         const { matchId } = req.params;
         await matchService.deleteMatch(matchId);
 
-        // Emit Socket Event
-        const io = req.app.get('io');
-        io.to('live_overview').emit('overview_update', { action: 'delete', matchId });
-        io.to(matchId).emit('match_deleted', { matchId });
+        // Sync with Firebase (set status to deleted or remove node)
+        const firebaseSyncService = require('../services/firebaseSyncService');
+        await firebaseSyncService.syncStatus(matchId, 'deleted');
 
         res.json({ message: 'Match deleted successfully' });
     } catch (error) {
@@ -66,10 +67,10 @@ exports.updateScoreStandard = async (req, res) => {
 
         await t.commit();
 
-        // 4. Socket Broadcast
-        const io = req.app.get('io');
-        io.to(matchId).emit('score_updated', { matchId, score: match.score_details, event: newEvent });
-        io.to('live_overview').emit('overview_update', { matchId, score: match.score_details });
+        // 4. Firebase Broadcast
+        const firebaseSyncService = require('../services/firebaseSyncService');
+        await firebaseSyncService.syncScore(matchId, match.score_details);
+        await firebaseSyncService.syncMatchUpdate(matchId, { last_event: newEvent });
 
         res.json({ message: 'Standard score updated', score: match.score_details });
 
@@ -91,14 +92,13 @@ exports.updateScoreCricket = async (req, res) => {
 
         await t.commit();
 
-        // Socket Broadcast
-        const io = req.app.get('io');
-        io.to(matchId).emit('cricket_score_update', { 
-            matchId, 
-            score: match.score_details, 
-            last_ball: ballEvent 
+        // 5. Firebase Broadcast
+        const firebaseSyncService = require('../services/firebaseSyncService');
+        await firebaseSyncService.syncCricketBall(matchId, {
+            score_details: match.score_details,
+            last_ball_event: ballEvent
+            // Note: In a full implementation, you'd also gather target batsman/bowler stats here
         });
-        io.to('live_overview').emit('overview_update', { matchId, score: match.score_details });
 
         res.json({ message: 'Ball logged', score: match.score_details });
 
@@ -114,20 +114,12 @@ exports.updateScore = async (req, res) => {
         const { matchId } = req.params;
         const match = await matchService.updateMatchStatus(matchId, req.body);
 
-        // Emit Socket Events
-        const io = req.app.get('io');
-        io.to(matchId).emit('score_updated', {
-            matchId,
-            scoreDetails: match.score_details,
+        // Sync with Firebase
+        const firebaseSyncService = require('../services/firebaseSyncService');
+        await firebaseSyncService.syncMatchUpdate(matchId, {
+            score_details: match.score_details,
             status: match.status,
-            winnerId: match.winner_id
-        });
-
-        io.to('live_overview').emit('overview_update', {
-            matchId,
-            sportId: match.sport_id,
-            scoreSummary: match.score_details,
-            status: match.status
+            winner_id: match.winner_id
         });
 
         res.json({ message: 'Score updated', match });
@@ -225,7 +217,7 @@ exports.updateLineup = async (req, res) => {
     try {
         const { matchId } = req.params;
         const { players, action, student_id } = req.body;
-        const io = req.app.get('io');
+        const firebaseSyncService = require('../services/firebaseSyncService');
 
         logger.info(`📋 [Lineup] Request for Match ${matchId}`, { 
             hasPlayers: !!players, 
@@ -239,14 +231,14 @@ exports.updateLineup = async (req, res) => {
             const newLineup = await matchService.bulkUpdateLineup(matchId, req.body);
             
             // Broadcast Full Update
-            io.to(matchId).emit('lineup_updated', { matchId, lineup: newLineup, type: 'bulk' });
+            await firebaseSyncService.syncMatchUpdate(matchId, { lineup: newLineup });
             return res.json({ message: 'Lineup bulk updated', count: newLineup.length });
         } else {
             // 2. Handle Single Player (Add/Remove)
             await matchService.updateLineup(matchId, req.body);
             
-            // Broadcast Single Change
-            io.to(matchId).emit('lineup_updated', { matchId, action, student_id, type: 'single' });
+            // Broadcast Single Change (Pushing to a generic 'last_lineup_action' node for now)
+            await firebaseSyncService.syncMatchUpdate(matchId, { last_lineup_action: { action, student_id } });
             return res.json({ message: 'Lineup updated' });
         }
     } catch (error) {
@@ -310,10 +302,12 @@ exports.updateMatchEvent = async (req, res) => {
             }
         }
 
-        // Emit Socket Event
-        const io = req.app.get('io');
-        io.to(matchId).emit('match_event', { matchId, event: newEvent, score: match.score_details });
-        io.to('live_overview').emit('overview_update', { action: 'score_update', matchId, score: match.score_details });
+        // Emit Firebase Event
+        const firebaseSyncService = require('../services/firebaseSyncService');
+        await firebaseSyncService.syncMatchUpdate(matchId, { 
+            last_match_event: newEvent, 
+            score_details: match.score_details 
+        });
 
         res.json({ message: 'Event logged', score: match.score_details });
 
@@ -378,9 +372,9 @@ exports.updateMatchState = async (req, res) => {
             { where: { id: matchId } }
         );
 
-        // Broadcast to all viewers
-        const io = req.app.get('io');
-        io.to(matchId).emit('match_state_updated', { matchId, state: newState });
+        // Broadcast to Firebase
+        const firebaseSyncService = require('../services/firebaseSyncService');
+        await firebaseSyncService.syncMatchUpdate(matchId, { match_state: newState });
 
         res.json({ message: 'Match state updated', state: newState });
     } catch (error) {
@@ -396,14 +390,9 @@ exports.updateToss = async (req, res) => {
 
         const match = await matchService.updateToss(matchId, { winner_id, decision, details });
 
-        // Socket Broadcast
-        const io = req.app.get('io');
-        io.to(matchId).emit('toss_updated', { matchId, toss: match.match_state.toss });
-        io.to('live_overview').emit('overview_update', { 
-            matchId, 
-            score: match.score_details, 
-            action: 'toss_updated' 
-        });
+        // Firebase Broadcast
+        const firebaseSyncService = require('../services/firebaseSyncService');
+        await firebaseSyncService.syncMatchUpdate(matchId, { toss: match.match_state.toss });
 
         res.json({ message: 'Toss updated successfully', toss: match.match_state.toss });
     } catch (error) {

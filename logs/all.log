@@ -86,3 +86,4 @@
 2026-02-26 07:38:14:3814 info: ✔️ match_state already exists.
 2026-02-26 07:38:14:3814 info: 🏁 All migrations checked/applied.
 2026-02-26 07:38:15:3815 info: ✅ Database synchronized successfully.
+2026-02-26 18:59:56:5956 info: 🌐 [REQ] 83fbe148-d7c5-43b8-bddc-5924ed904dd0 | POST /api/v1/auth/login | {"id":"83fbe148-d7c5-43b8-bddc-5924ed904dd0","ip":"127.0.0.1","query":{},"body":{"email":"admin@energy.com","password":"adminpassword"},"userAgent":"axios/1.13.5"}

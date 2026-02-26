@@ -1,3 +1,5 @@
 /.env
 /node_modules
 /credentials.json
+/base64_output.txt
+/scripts/encode_firebase.js

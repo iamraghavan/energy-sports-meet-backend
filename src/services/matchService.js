@@ -150,50 +150,10 @@ exports.updateMatchStatus = async (matchId, { status, score_details, winner_id }
 
     await match.save();
 
-    // --- BROADCAST NOTIFICATIONS (EMAIL) ---
-    const handleEmailBroadcast = async (templateFunc, data, subjectSuffix) => {
-        const registrations = await Registration.findAll({
-            where: { sport_id: match.sport_id, status: 'approved' },
-            include: [{ model: Student, attributes: ['email'] }]
-        });
-        const allEmails = registrations.map(r => r.Student && r.Student.email).filter(e => e);
-        if (allEmails.length === 0) return;
-
-        const template = templateFunc(data);
-        Promise.all(allEmails.map(email =>
-            sendEmail({
-                to: email,
-                subject: `Broadcast: ${match.Sport.name} - ${subjectSuffix}`,
-                text: template.text,
-                html: template.html
-            })
-        )).catch(err => logger.error(`Email Broadcast Error: ${err.message}`));
-    };
-
-    // 1. Match Goes Live
-    if (prevStatus === 'scheduled' && status === 'live') {
-        handleEmailBroadcast(getMatchLiveTemplate, {
-            teamAName: match.TeamA ? match.TeamA.team_name : 'Team A',
-            teamBName: match.TeamB ? match.TeamB.team_name : 'Team B',
-            sportName: match.Sport.name
-        }, 'LIVE');
-    }
-
-    // 2. Match Completed
+    // 1. Match Completed Logic (Could be extracted to a generic notification service later)
     if (prevStatus !== 'completed' && status === 'completed') {
         const winner = winner_id ? await Team.findByPk(winner_id) : null;
-        const scoreSummary = Object.entries(match.score_details || {}).map(([tid, score]) => {
-            const name = tid === match.team_a_id ? (match.TeamA?.team_name || 'Team A') : (match.TeamB?.team_name || 'Team B');
-            return `${name}: ${typeof score === 'object' ? JSON.stringify(score) : score}`;
-        }).join(' | ');
-
-        handleEmailBroadcast(getMatchResultTemplate, {
-            teamAName: match.TeamA ? match.TeamA.team_name : 'Team A',
-            teamBName: match.TeamB ? match.TeamB.team_name : 'Team B',
-            winnerName: winner ? winner.team_name : 'TBD',
-            finalScore: scoreSummary,
-            matchId: match.id
-        }, 'COMPLETED');
+        logger.info(`Match ${matchId} completed. Winner: ${winner ? winner.team_name : 'Draw'}`);
     }
 
     return match;
