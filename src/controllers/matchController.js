@@ -10,9 +10,9 @@ exports.createMatch = async (req, res) => {
     try {
         const match = await matchService.createMatch(req.body);
 
-        // Sync with Firebase
+        // Sync with Firebase (Full Match Details)
         const firebaseSyncService = require('../services/firebaseSyncService');
-        await firebaseSyncService.syncStatus(match.id, match.status);
+        await firebaseSyncService.syncFullMatch(match);
 
         res.status(201).json(match);
     } catch (error) {
@@ -26,12 +26,17 @@ exports.updateMatchDetails = async (req, res) => {
         const { matchId } = req.params;
         const match = await matchService.updateMatchDetails(matchId, req.body);
 
-        // Sync with Firebase
+        // Sync with Firebase (Full Match Details)
         const firebaseSyncService = require('../services/firebaseSyncService');
-        await firebaseSyncService.syncMatchUpdate(matchId, {
-            status: match.status,
-            ...req.body
+        // Fetch full record to ensure Teams and Sport are included
+        const fullMatch = await Match.findByPk(matchId, {
+            include: [
+                { model: Team, as: 'TeamA' },
+                { model: Team, as: 'TeamB' },
+                { model: Sport }
+            ]
         });
+        await firebaseSyncService.syncFullMatch(fullMatch);
 
         res.json({ message: 'Match details updated', match });
     } catch (error) {

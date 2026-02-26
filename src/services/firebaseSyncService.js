@@ -39,7 +39,35 @@ exports.syncStatus = async (matchId, status) => {
     await pushToFirebase(`sports/matches/${matchId}`, { status });
 };
 
+exports.syncFullMatch = async (match) => {
+    // Structure the data for the frontend
+    const payload = {
+        id: match.id,
+        sport: match.Sport ? match.Sport.name : 'Unknown',
+        sport_id: match.sport_id,
+        status: match.status,
+        venue: match.venue,
+        start_time: match.start_time,
+        referee_name: match.referee_name,
+        team_a: match.TeamA ? {
+            id: match.TeamA.id,
+            name: match.TeamA.team_name,
+            college: match.TeamA.college_name
+        } : null,
+        team_b: match.TeamB ? {
+            id: match.TeamB.id,
+            name: match.TeamB.team_name,
+            college: match.TeamB.college_name
+        } : null,
+        score_details: match.score_details || {},
+        match_state: match.match_state || {},
+        toss: match.match_state?.toss || null
+    };
+    await pushToFirebase(`sports/matches/${match.id}`, payload);
+};
+
 exports.syncCricketBall = async (matchId, cricketData) => {
+
     // Expected to receive the granular data needed by frontend
     await pushToFirebase(`sports/matches/${matchId}`, cricketData);
 };
