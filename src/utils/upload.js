@@ -1,11 +1,10 @@
-const { Octokit } = require('@octokit/rest');
 const path = require('path');
 const crypto = require('crypto');
 require('dotenv').config();
 
-const octokit = new Octokit({
-    auth: process.env.GITHUB_TOKEN
-});
+// We'll initialize Octokit lazily inside the function to avoid ESM/CommonJS issues
+let Octokit = null;
+let octokit = null;
 
 /**
  * Uploads a file to GitHub repository and returns the CDN URL.
@@ -15,6 +14,17 @@ const octokit = new Octokit({
  */
 async function uploadToGitHub(file, folder = 'uploads') {
     try {
+        // Dynamically import Octokit (ESM) into CommonJS
+        if (!octokit) {
+            if (!Octokit) {
+                const module = await import('@octokit/rest');
+                Octokit = module.Octokit;
+            }
+            octokit = new Octokit({
+                auth: process.env.GITHUB_TOKEN
+            });
+        }
+
         const fileExtension = path.extname(file.originalname || file.name);
         const fileName = `${folder}/${crypto.randomUUID()}${fileExtension}`;
         const content = file.buffer.toString('base64');
