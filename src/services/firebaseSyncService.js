@@ -8,7 +8,10 @@ const logger = require('../utils/logger');
  * @param {object} data - The data object to merge/update
  */
 const pushToFirebase = async (path, data) => {
-    if (!db) return; // Silent return if Firebase is not configured via ENV
+    if (!db) {
+        logger.warn(`⚠️ Firebase Sync Skipped: DB instance not initialized. Check your ENV variables.`);
+        return;
+    }
     try {
         const ref = db.ref(path);
         // Using update() performs a partial merge rather than overwriting the whole node

@@ -8,11 +8,14 @@ try {
         // Decode the base64 string back into JSON
         const serviceAccountJson = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf-8');
         const serviceAccount = JSON.parse(serviceAccountJson);
+        const dbUrl = process.env.FIREBASE_DATABASE_URL || `https://${serviceAccount.project_id}-default-rtdb.firebaseio.com`;
+
+        console.log(`📡 Initializing Firebase for Project: ${serviceAccount.project_id}`);
+        console.log(`🔗 Firebase Database URL: ${dbUrl}`);
 
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
-            // Default to parsing the project ID to form the URL if not explicitly provided
-            databaseURL: process.env.FIREBASE_DATABASE_URL || `https://${serviceAccount.project_id}-default-rtdb.firebaseio.com`
+            databaseURL: dbUrl
         });
 
         db = admin.database();

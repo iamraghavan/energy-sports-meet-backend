@@ -11,8 +11,12 @@ exports.createMatch = async (req, res) => {
         const match = await matchService.createMatch(req.body);
 
         // Sync with Firebase (Full Match Details)
-        const firebaseSyncService = require('../services/firebaseSyncService');
-        await firebaseSyncService.syncFullMatch(match);
+        try {
+            const firebaseSyncService = require('../services/firebaseSyncService');
+            await firebaseSyncService.syncFullMatch(match);
+        } catch (syncError) {
+            logger.error(`⚠️ Firebase Sync Failed during creation for Match ${match.id}: ${syncError.message}`);
+        }
 
         res.status(201).json(match);
     } catch (error) {
@@ -27,16 +31,20 @@ exports.updateMatchDetails = async (req, res) => {
         const match = await matchService.updateMatchDetails(matchId, req.body);
 
         // Sync with Firebase (Full Match Details)
-        const firebaseSyncService = require('../services/firebaseSyncService');
-        // Fetch full record to ensure Teams and Sport are included
-        const fullMatch = await Match.findByPk(matchId, {
-            include: [
-                { model: Team, as: 'TeamA' },
-                { model: Team, as: 'TeamB' },
-                { model: Sport }
-            ]
-        });
-        await firebaseSyncService.syncFullMatch(fullMatch);
+        try {
+            const firebaseSyncService = require('../services/firebaseSyncService');
+            // Fetch full record to ensure Teams and Sport are included
+            const fullMatch = await Match.findByPk(matchId, {
+                include: [
+                    { model: Team, as: 'TeamA' },
+                    { model: Team, as: 'TeamB' },
+                    { model: Sport }
+                ]
+            });
+            await firebaseSyncService.syncFullMatch(fullMatch);
+        } catch (syncError) {
+            logger.error(`⚠️ Firebase Sync Failed during update for Match ${matchId}: ${syncError.message}`);
+        }
 
         res.json({ message: 'Match details updated', match });
     } catch (error) {
