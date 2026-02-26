@@ -2,6 +2,23 @@ const { db } = require('../config/firebase');
 const logger = require('../utils/logger');
 
 /**
+ * Recursively removes 'undefined' values from an object.
+ * Firebase RTDB throws an error for 'undefined' but accepts 'null'.
+ */
+const stripUndefined = (obj) => {
+    if (obj && typeof obj === 'object') {
+        Object.keys(obj).forEach(key => {
+            if (obj[key] === undefined) {
+                delete obj[key];
+            } else if (typeof obj[key] === 'object') {
+                stripUndefined(obj[key]);
+            }
+        });
+    }
+    return obj;
+};
+
+/**
  * Pushes data to a specified path in the Firebase Realtime Database.
  * Runs asynchronously and catches its own errors to avoid blocking the HTTP response.
  * @param {string} path - The DB path (e.g., 'sports/matches/123')
@@ -13,15 +30,16 @@ const pushToFirebase = async (path, data) => {
         return;
     }
     try {
+        const cleanData = stripUndefined({ ...data }); // Ensure no 'undefined' properties
         const ref = db.ref(path);
         // Using update() performs a partial merge rather than overwriting the whole node
         await ref.update({
-            ...data,
+            ...cleanData,
             last_updated: Date.now()
         });
         logger.info(`🔥 Firebase Sync Success: ${path}`);
     } catch (error) {
-        logger.error(`❌ Firebase Sync Error for path ${path}:`, error.message);
+        logger.error(`❌ Firebase Sync Error for path ${path}:`, error);
     }
 };
 
@@ -49,7 +67,7 @@ exports.syncFullMatch = async (match) => {
         sport: match.Sport ? match.Sport.name : 'Unknown',
         sport_id: match.sport_id,
         status: match.status,
-        venue: match.venue,
+        venue: match.venue || "",
         start_time: match.start_time,
         referee_name: match.referee_name,
         team_a: match.TeamA ? {
