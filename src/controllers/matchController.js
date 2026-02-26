@@ -372,9 +372,11 @@ exports.updateMatchState = async (req, res) => {
             updatedAt: new Date()
         };
 
-        match.match_state = newState;
-        match.changed('match_state', true);
-        await match.save();
+        // Optimized: Targeted update instead of full save
+        await Match.update(
+            { match_state: newState }, 
+            { where: { id: matchId } }
+        );
 
         // Broadcast to all viewers
         const io = req.app.get('io');
