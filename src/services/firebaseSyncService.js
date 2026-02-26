@@ -93,7 +93,9 @@ exports.syncFullMatch = async (match) => {
         } : null,
         score_details: scoreDetails,
         match_state: matchState,
-        toss: matchState?.toss || null
+        toss: matchState?.toss || null,
+        striker_id: matchState?.striker_id || null,
+        non_striker_id: matchState?.non_striker_id || null
     };
     await pushToFirebase(`sports/matches/${match.id}`, payload);
 };

@@ -1,6 +1,22 @@
 const { Match, MatchPlayer, sequelize } = require('../models');
 const logger = require('../utils/logger');
 
+const toOverNotation = (totalBalls) => {
+    const overs = Math.floor(totalBalls / 6);
+    const balls = totalBalls % 6;
+    return `${overs}.${balls}`;
+};
+
+/**
+ * Robust JSON parsing for MySQL JSON columns
+ */
+const tryParse = (val) => {
+    if (typeof val === 'string') {
+        try { return JSON.parse(val); } catch (e) { return {}; }
+    }
+    return val || {};
+};
+
 /**
  * Shared logic for standard sports (Football, etc.)
  */
@@ -11,12 +27,12 @@ exports.processStandardScore = async (matchId, data, transaction) => {
     if (!match) throw new Error('Match not found');
 
     // 1. Update Global Score
-    let currentScore = (match.score_details && typeof match.score_details === 'object' && !Array.isArray(match.score_details)) 
-        ? { ...match.score_details } 
-        : {};
+    let currentScore = tryParse(match.score_details);
 
     if (!currentScore[team_id]) currentScore[team_id] = { score: 0 };
-    currentScore[team_id].score = (currentScore[team_id].score || 0) + (points || 0);
+    
+    const prevScore = currentScore[team_id].score || 0;
+    currentScore[team_id].score = prevScore + (points || 0);
 
     // 2. Log Event
     const newEvent = {
@@ -25,7 +41,7 @@ exports.processStandardScore = async (matchId, data, transaction) => {
         team_id,
         player_id,
         value: points,
-        details
+        details: details || `${prevScore} + ${points} = ${currentScore[team_id].score}`
     };
     const events = match.match_events || [];
     
@@ -62,8 +78,7 @@ exports.processStandardScore = async (matchId, data, transaction) => {
 exports.processCricketBall = async (matchId, data, transaction) => {
     const { 
         runs, is_wicket, wicket_type, extras, extra_type, 
-        batting_team_id, striker_id, non_striker_id, bowler_id, 
-        over_number, ball_number 
+        batting_team_id, striker_id, non_striker_id, bowler_id
     } = data;
 
     const match = await Match.findByPk(matchId, { transaction });
@@ -73,15 +88,11 @@ exports.processCricketBall = async (matchId, data, transaction) => {
     const extraRuns = (extras || 0);
     const totalBallRuns = runsScored + extraRuns;
 
-    logger.info(`🏏 Cricket Logic: Team ${batting_team_id} +${totalBallRuns} runs`);
-
     // 1. Update Team Score
-    let score = (match.score_details && typeof match.score_details === 'object' && !Array.isArray(match.score_details)) 
-        ? { ...match.score_details } 
-        : {};
+    let score = tryParse(match.score_details);
         
     if (!score[batting_team_id] || typeof score[batting_team_id] !== 'object') {
-        score[batting_team_id] = { runs: 0, wickets: 0, overs: 0.0 };
+        score[batting_team_id] = { runs: 0, wickets: 0, balls: 0, overs: "0.0" };
     }
 
     score[batting_team_id].runs += totalBallRuns;
@@ -89,27 +100,43 @@ exports.processCricketBall = async (matchId, data, transaction) => {
 
     const isLegalBall = !['wide', 'noball'].includes(extra_type);
     if (isLegalBall) {
-        score[batting_team_id].overs = over_number; 
+        score[batting_team_id].balls = (score[batting_team_id].balls || 0) + 1;
+        score[batting_team_id].overs = toOverNotation(score[batting_team_id].balls);
     }
 
-    // 2. Log Event
+    // 2. Track State (Strike Rotation)
+    let state = tryParse(match.match_state);
+    
+    // Simple strike rotation: 1 or 3 runs rotates strike
+    if (runsScored % 2 !== 0 && striker_id && non_striker_id) {
+        state.striker_id = non_striker_id;
+        state.non_striker_id = striker_id;
+    }
+
+    // 3. Log Event
     const ballEvent = {
         timestamp: new Date(),
         event_type: 'delivery',
         batting_team_id,
         runs,
         extras,
+        extra_type,
         is_wicket,
+        wicket_type,
         striker_id,
         bowler_id,
-        commentary: `${over_number}: ${runs} runs${is_wicket ? ', WICKET' : ''}`
+        overs: score[batting_team_id].overs,
+        commentary: `${score[batting_team_id].overs}: ${runs} runs${is_wicket ? `, WICKET (${wicket_type})` : ''}`
     };
+    
     const events = match.match_events || [];
     match.match_events = [...events, ballEvent];
     match.score_details = score;
+    match.match_state = state;
     
     match.changed('score_details', true);
     match.changed('match_events', true);
+    match.changed('match_state', true);
     await match.save({ transaction });
 
     // 3. Update Striker Stats
@@ -137,16 +164,21 @@ exports.processCricketBall = async (matchId, data, transaction) => {
         if (bowl) {
             let s = (bowl.performance_stats && typeof bowl.performance_stats === 'object' && !Array.isArray(bowl.performance_stats))
                 ? { ...bowl.performance_stats }
-                : { overs: 0, runs_conceded: 0, wickets: 0 };
+                : { balls: 0, overs: "0.0", runs_conceded: 0, wickets: 0, wides: 0, noballs: 0 };
                 
+            // Wides and No-balls add to bowler's runs_conceded
             const bowlerRuns = runsScored + (['wide', 'noball'].includes(extra_type) ? extraRuns : 0);
             s.runs_conceded = (s.runs_conceded || 0) + bowlerRuns;
             
-            if (extra_type !== 'wide' && extra_type !== 'noball') {
-                s.balls_bowled = (s.balls_bowled || 0) + 1;
+            if (isLegalBall) {
+                s.balls = (s.balls || 0) + 1;
+                s.overs = toOverNotation(s.balls);
             }
+
+            if (extra_type === 'wide') s.wides = (s.wides || 0) + 1;
+            if (extra_type === 'noball') s.noballs = (s.noballs || 0) + 1;
             
-            if (is_wicket && wicket_type !== 'runout') {
+            if (is_wicket && !['runout', 'retired_hurt'].includes(wicket_type)) {
                 s.wickets = (s.wickets || 0) + 1;
             }
             
@@ -175,16 +207,59 @@ exports.undoLastEvent = async (matchId) => {
         logger.info(`◀️ Undoing last event: ${lastEvent.event_type}`, { matchId });
 
         // Reverse Score Impact
-        let score = { ...(match.score_details || {}) };
+        let score = tryParse(match.score_details);
         if (lastEvent.event_type === 'delivery') {
-            // Cricket Undo
             const tid = lastEvent.batting_team_id;
             if (score[tid]) {
-                score[tid].runs -= (lastEvent.runs || 0) + (lastEvent.extras || 0);
+                const totalRuns = (lastEvent.runs || 0) + (lastEvent.extras || 0);
+                score[tid].runs -= totalRuns;
                 if (lastEvent.is_wicket) score[tid].wickets -= 1;
+                
+                const isLegalBall = !['wide', 'noball'].includes(lastEvent.extra_type);
+                if (isLegalBall) {
+                    score[tid].balls -= 1;
+                    score[tid].overs = toOverNotation(score[tid].balls);
+                }
             }
+            
+            // Revert Striker Stats
+            if (lastEvent.striker_id) {
+                const bats = await MatchPlayer.findOne({ where: { match_id: matchId, student_id: lastEvent.striker_id }, transaction: t });
+                if (bats) {
+                    let s = { ...bats.performance_stats };
+                    if (lastEvent.extra_type !== 'wide') s.balls -= 1;
+                    s.runs -= (lastEvent.runs || 0);
+                    if (lastEvent.runs === 4) s.fours -= 1;
+                    if (lastEvent.runs === 6) s.sixes -= 1;
+                    bats.performance_stats = s;
+                    bats.changed('performance_stats', true);
+                    await bats.save({ transaction: t });
+                }
+            }
+
+            // Revert Bowler Stats
+            if (lastEvent.bowler_id) {
+                const bowl = await MatchPlayer.findOne({ where: { match_id: matchId, student_id: lastEvent.bowler_id }, transaction: t });
+                if (bowl) {
+                    let s = { ...bowl.performance_stats };
+                    const bowlerRuns = (lastEvent.runs || 0) + (['wide', 'noball'].includes(lastEvent.extra_type) ? (lastEvent.extras || 0) : 0);
+                    s.runs_conceded -= bowlerRuns;
+                    if (isLegalBall) {
+                        s.balls -= 1;
+                        s.overs = toOverNotation(s.balls);
+                    }
+                    if (lastEvent.extra_type === 'wide') s.wides -= 1;
+                    if (lastEvent.extra_type === 'noball') s.noballs -= 1;
+                    if (lastEvent.is_wicket && !['runout', 'retired_hurt'].includes(lastEvent.wicket_type)) {
+                        s.wickets -= 1;
+                    }
+                    bowl.performance_stats = s;
+                    bowl.changed('performance_stats', true);
+                    await bowl.save({ transaction: t });
+                }
+            }
+
         } else if (lastEvent.event_type === 'score' || lastEvent.event_type === 'goal' || lastEvent.event_type === 'point') {
-            // Standard Undo
             const tid = lastEvent.team_id;
             if (score[tid]) {
                 score[tid].score -= (lastEvent.value || 0);
