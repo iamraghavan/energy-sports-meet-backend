@@ -97,3 +97,51 @@
 2026-02-26 21:15:50:1550 info: 🌐 [REQ] 2e38481b-adc4-422f-a9ef-b47e56d8220b | POST /api/v1/sports-head/teams | {"id":"2e38481b-adc4-422f-a9ef-b47e56d8220b","ip":"::ffff:127.0.0.1","query":{},"body":{"team_name":"Global Test Team XI","registration_id":"0ac1bd2b-ac93-4a5a-a301-7df1a88fcd56"}}
 2026-02-26 21:15:51:1551 info: 🌐 [REQ] b34713b4-af8c-4ff5-a584-57851b18eac0 | POST /api/v1/sports-head/teams/4b8adc75-0bf9-4702-975b-3b7d5a648778/players/bulk | {"id":"b34713b4-af8c-4ff5-a584-57851b18eac0","ip":"::ffff:127.0.0.1","query":{},"body":{"registration_ids":["936eb924-2f7c-4954-8b23-e008480b3dea","47e3839c-798d-4d8f-b852-9f5b9fdde815"]}}
 2026-02-26 21:49:08:498 info: 🔥 Firebase Sync Success: sports/matches/cc43b0fc-b559-400e-9829-92b48f919323
+2026-02-26 23:03:11:311 error: ❌ Firebase Transaction Error for ecabb1ed-5fad-487b-a66a-4e2af1adb0d8: transaction failed: Data returned contains undefined in property 'sports.matches.ecabb1ed-5fad-487b-a66a-4e2af1adb0d8.last_ball.extra_type' | {"stack":"Error: transaction failed: Data returned contains undefined in property 'sports.matches.ecabb1ed-5fad-487b-a66a-4e2af1adb0d8.last_ball.extra_type'\n    at validateFirebaseData (F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:15419:15)\n    at F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:15470:13\n    at each (F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:5425:13)\n    at validateFirebaseData (F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:15453:9)\n    at F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:15470:13\n    at each (F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:5425:13)\n    at validateFirebaseData (F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:15453:9)\n    at repoStartTransaction (F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:16240:9)\n    at runTransaction (F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:18804:5)\n    at Reference.transaction (F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:19597:24)"}
+2026-02-26 23:03:40:340 error: ❌ Firebase Transaction Error for a801251b-887b-4882-9b31-f09472376ca9: transaction failed: Data returned contains undefined in property 'sports.matches.a801251b-887b-4882-9b31-f09472376ca9.last_ball.extra_type' | {"stack":"Error: transaction failed: Data returned contains undefined in property 'sports.matches.a801251b-887b-4882-9b31-f09472376ca9.last_ball.extra_type'\n    at validateFirebaseData (F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:15419:15)\n    at F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:15470:13\n    at each (F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:5425:13)\n    at validateFirebaseData (F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:15453:9)\n    at F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:15470:13\n    at each (F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:5425:13)\n    at validateFirebaseData (F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:15453:9)\n    at repoStartTransaction (F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:16240:9)\n    at runTransaction (F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:18804:5)\n    at Reference.transaction (F:\\EGSPGOI Projects\\energy-sports-meet-backend\\node_modules\\@firebase\\database-compat\\dist\\index.standalone.js:19597:24)"}
+2026-02-26 23:04:03:43 info: ⚡ Firebase Transaction Success: 38c0b1b4-c35d-4d9d-8ba5-5a516d1599b6
+2026-02-26 23:04:03:43 info: 🔥 Firebase Sync Success: sports/matches/38c0b1b4-c35d-4d9d-8ba5-5a516d1599b6
+2026-02-26 23:04:03:43 info: 🥎 Event Logged to Firebase History (ball_history): 38c0b1b4-c35d-4d9d-8ba5-5a516d1599b6
+2026-02-26 23:04:03:43 info: ⚡ Firebase Transaction Success: 38c0b1b4-c35d-4d9d-8ba5-5a516d1599b6
+2026-02-26 23:04:04:44 info: 🔥 Firebase Sync Success: sports/matches/38c0b1b4-c35d-4d9d-8ba5-5a516d1599b6
+2026-02-26 23:04:04:44 info: 🥎 Event Logged to Firebase History (ball_history): 38c0b1b4-c35d-4d9d-8ba5-5a516d1599b6
+2026-02-26 23:04:04:44 info: ⚡ Firebase Transaction Success: 38c0b1b4-c35d-4d9d-8ba5-5a516d1599b6
+2026-02-26 23:04:04:44 info: 🔥 Firebase Sync Success: sports/matches/38c0b1b4-c35d-4d9d-8ba5-5a516d1599b6
+2026-02-26 23:04:04:44 info: 🥎 Event Logged to Firebase History (ball_history): 38c0b1b4-c35d-4d9d-8ba5-5a516d1599b6
+2026-02-26 23:04:04:44 info: ⚡ Firebase Transaction Success: 38c0b1b4-c35d-4d9d-8ba5-5a516d1599b6
+2026-02-26 23:04:04:44 info: 🔥 Firebase Sync Success: sports/matches/38c0b1b4-c35d-4d9d-8ba5-5a516d1599b6
+2026-02-26 23:04:04:44 info: 🥎 Event Logged to Firebase History (ball_history): 38c0b1b4-c35d-4d9d-8ba5-5a516d1599b6
+2026-02-26 23:04:04:44 info: ⚡ Firebase Transaction Success: 38c0b1b4-c35d-4d9d-8ba5-5a516d1599b6
+2026-02-26 23:04:04:44 info: 🔥 Firebase Sync Success: sports/matches/38c0b1b4-c35d-4d9d-8ba5-5a516d1599b6
+2026-02-26 23:04:04:44 info: 🥎 Event Logged to Firebase History (ball_history): 38c0b1b4-c35d-4d9d-8ba5-5a516d1599b6
+2026-02-26 23:04:05:45 info: ✅ Match Archival Success (MySQL): 38c0b1b4-c35d-4d9d-8ba5-5a516d1599b6
+2026-02-26 23:06:17:617 info: ⚡ Firebase Transaction Success: 3c21ff14-6dbe-4d42-8afa-ec0fb4d2da03
+2026-02-26 23:06:17:617 info: 🔥 Firebase Sync Success: sports/matches/3c21ff14-6dbe-4d42-8afa-ec0fb4d2da03
+2026-02-26 23:06:17:617 info: ✨ Event Logged to Firebase History (match_history): 3c21ff14-6dbe-4d42-8afa-ec0fb4d2da03
+2026-02-26 23:06:17:617 info: ⚡ Firebase Transaction Success: 3c21ff14-6dbe-4d42-8afa-ec0fb4d2da03
+2026-02-26 23:06:17:617 info: 🔥 Firebase Sync Success: sports/matches/3c21ff14-6dbe-4d42-8afa-ec0fb4d2da03
+2026-02-26 23:06:17:617 info: ✨ Event Logged to Firebase History (match_history): 3c21ff14-6dbe-4d42-8afa-ec0fb4d2da03
+2026-02-26 23:06:17:617 info: ⚡ Firebase Transaction Success: 3c21ff14-6dbe-4d42-8afa-ec0fb4d2da03
+2026-02-26 23:06:17:617 info: 🔥 Firebase Sync Success: sports/matches/3c21ff14-6dbe-4d42-8afa-ec0fb4d2da03
+2026-02-26 23:06:17:617 info: ✨ Event Logged to Firebase History (match_history): 3c21ff14-6dbe-4d42-8afa-ec0fb4d2da03
+2026-02-26 23:06:17:617 info: ⚡ Firebase Transaction Success: 3c21ff14-6dbe-4d42-8afa-ec0fb4d2da03
+2026-02-26 23:06:17:617 info: 🔥 Firebase Sync Success: sports/matches/3c21ff14-6dbe-4d42-8afa-ec0fb4d2da03
+2026-02-26 23:06:17:617 info: ✨ Event Logged to Firebase History (match_history): 3c21ff14-6dbe-4d42-8afa-ec0fb4d2da03
+2026-02-26 23:06:18:618 info: ⚡ Firebase Transaction Success: 3c21ff14-6dbe-4d42-8afa-ec0fb4d2da03
+2026-02-26 23:06:18:618 info: 🔥 Firebase Sync Success: sports/matches/3c21ff14-6dbe-4d42-8afa-ec0fb4d2da03
+2026-02-26 23:06:18:618 info: ✨ Event Logged to Firebase History (match_history): 3c21ff14-6dbe-4d42-8afa-ec0fb4d2da03
+2026-02-26 23:06:33:633 info: ⚡ Firebase Transaction Success: f89d7c59-da8c-4683-a64b-7d57bc57b6b4
+2026-02-26 23:06:33:633 info: 🔥 Firebase Sync Success: sports/matches/f89d7c59-da8c-4683-a64b-7d57bc57b6b4
+2026-02-26 23:06:33:633 info: ✨ Event Logged to Firebase History (match_history): f89d7c59-da8c-4683-a64b-7d57bc57b6b4
+2026-02-26 23:06:33:633 info: ⚡ Firebase Transaction Success: f89d7c59-da8c-4683-a64b-7d57bc57b6b4
+2026-02-26 23:06:33:633 info: 🔥 Firebase Sync Success: sports/matches/f89d7c59-da8c-4683-a64b-7d57bc57b6b4
+2026-02-26 23:06:34:634 info: ✨ Event Logged to Firebase History (match_history): f89d7c59-da8c-4683-a64b-7d57bc57b6b4
+2026-02-26 23:06:34:634 info: ⚡ Firebase Transaction Success: f89d7c59-da8c-4683-a64b-7d57bc57b6b4
+2026-02-26 23:06:34:634 info: 🔥 Firebase Sync Success: sports/matches/f89d7c59-da8c-4683-a64b-7d57bc57b6b4
+2026-02-26 23:06:34:634 info: ✨ Event Logged to Firebase History (match_history): f89d7c59-da8c-4683-a64b-7d57bc57b6b4
+2026-02-26 23:06:34:634 info: ⚡ Firebase Transaction Success: f89d7c59-da8c-4683-a64b-7d57bc57b6b4
+2026-02-26 23:06:34:634 info: 🔥 Firebase Sync Success: sports/matches/f89d7c59-da8c-4683-a64b-7d57bc57b6b4
+2026-02-26 23:06:34:634 info: ✨ Event Logged to Firebase History (match_history): f89d7c59-da8c-4683-a64b-7d57bc57b6b4
+2026-02-26 23:06:34:634 info: ⚡ Firebase Transaction Success: f89d7c59-da8c-4683-a64b-7d57bc57b6b4
+2026-02-26 23:06:34:634 info: 🔥 Firebase Sync Success: sports/matches/f89d7c59-da8c-4683-a64b-7d57bc57b6b4
+2026-02-26 23:06:34:634 info: ✨ Event Logged to Firebase History (match_history): f89d7c59-da8c-4683-a64b-7d57bc57b6b4

@@ -106,7 +106,7 @@ exports.syncFullMatch = async (match) => {
  * Appends a single event to the match's historical timeline in Firebase.
  * Useful for ball-by-ball history or point-by-point updates.
  */
-const logEventToHistory = async (matchId, event, nodeName = 'ball_history') => {
+const logEventToHistory = async (matchId, event, nodeName = 'match_history') => {
     if (!db || !event) return;
     try {
         const ref = db.ref(`sports/matches/${matchId}/${nodeName}`);
@@ -114,18 +114,70 @@ const logEventToHistory = async (matchId, event, nodeName = 'ball_history') => {
             ...event,
             server_timestamp: Date.now()
         });
-        logger.info(`🥎 Event Logged to Firebase History (${nodeName}): ${matchId}`);
+        logger.info(`✨ Event Logged to Firebase History (${nodeName}): ${matchId}`);
     } catch (error) {
         logger.error(`❌ Firebase History Error for ${matchId}:`, error);
     }
 };
 
+/**
+ * Retrieves the current live state of a match from Firebase.
+ * @param {string} matchId 
+ */
+exports.getMatchLiveState = async (matchId) => {
+    if (!db) return null;
+    try {
+        const snapshot = await db.ref(`sports/matches/${matchId}`).once('value');
+        return snapshot.val();
+    } catch (error) {
+        logger.error(`❌ Firebase Read Error for ${matchId}:`, error);
+        return null;
+    }
+};
+
+/**
+ * Performs an atomic update on the match data in Firebase using a transaction.
+ * This ensures that multiple rapid updates (e.g., rapid-fire balls) don't overwrite each other.
+ * @param {string} matchId 
+ * @param {function} updateFn - Receives current data, returns modified data
+ */
+exports.updateMatchLiveState = async (matchId, updateFn) => {
+    if (!db) return null;
+    try {
+        const ref = db.ref(`sports/matches/${matchId}`);
+        const result = await ref.transaction((currentData) => {
+            // currentData may be null if the node doesn't exist yet
+            return updateFn(currentData || {});
+        });
+        
+        if (result.committed) {
+            logger.info(`⚡ Firebase Transaction Success: ${matchId}`);
+            return result.snapshot.val();
+        } else {
+            logger.warn(`⚠️ Firebase Transaction Aborted: ${matchId}`);
+            return null;
+        }
+    } catch (error) {
+        logger.error(`❌ Firebase Transaction Error for ${matchId}:`, error);
+        throw error;
+    }
+};
+
+/**
+ * Generic event sync for standard sports (Football, Kabaddi, etc.)
+ */
+exports.syncMatchEvent = async (matchId, event) => {
+    // 1. Log to history list
+    await logEventToHistory(matchId, event, 'match_history');
+};
+
 exports.syncCricketBall = async (matchId, cricketData) => {
     // 1. Update the main match node (Score, State, last ball)
+    // Using update() for non-transactional simple merges
     await pushToFirebase(`sports/matches/${matchId}`, cricketData);
 
-    // 2. Append to ball history
+    // 2. Append to history
     if (cricketData.last_ball_event) {
-        await logEventToHistory(matchId, cricketData.last_ball_event, 'ball_history');
+        await logEventToHistory(matchId, cricketData.last_ball_event, 'match_history');
     }
 };

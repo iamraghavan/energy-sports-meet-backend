@@ -70,77 +70,60 @@ exports.deleteMatch = async (req, res) => {
 
 // ------------------------------------------------------------------
 // A. Standard Scoring (Football, Kabaddi, Volleyball, etc.)
-// Payload: { points, team_id, player_id, event_type: 'goal'|'point'|'foul' }
 // ------------------------------------------------------------------
 exports.updateScoreStandard = async (req, res) => {
-    const t = await sequelize.transaction();
     try {
         const { matchId } = req.params;
-        const { match, newEvent } = await scoringService.processStandardScore(matchId, req.body, t);
+        // No SQL Transaction needed here - logic is Firebase-first
+        const { match, newEvent } = await scoringService.processStandardScore(matchId, req.body);
 
-        await t.commit();
-
-        // 4. Firebase Broadcast
-        const firebaseSyncService = require('../services/firebaseSyncService');
-        await firebaseSyncService.syncScore(matchId, match.score_details);
-        await firebaseSyncService.syncMatchUpdate(matchId, { last_event: newEvent });
-        
-        // Log to history node for chronological feed
-        await firebaseSyncService.syncCricketBall(matchId, { // Reusing logic for consistency
-            last_ball_event: newEvent 
-        });
-
-        res.json({ message: 'Standard score updated', score: match.score_details });
+        res.json({ message: 'Standard score updated (Firebase)', score: match.score_details, event: newEvent });
 
     } catch (error) {
-        if (t) await t.rollback();
+        logger.error(`❌ Standard Score Error: ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 };
 
 // ------------------------------------------------------------------
 // B. Cricket Scoring (Ball-by-Ball)
-// Payload: { runs: 0-6, is_wicket, wicket_type, extras, extra_type, striker_id, non_striker_id, bowler_id }
 // ------------------------------------------------------------------
 exports.updateScoreCricket = async (req, res) => {
-    const t = await sequelize.transaction();
     try {
         const { matchId } = req.params;
-        const { match, ballEvent } = await scoringService.processCricketBall(matchId, req.body, t);
+        // No SQL Transaction - Using Firebase transactions internally
+        const { match, ballEvent } = await scoringService.processCricketBall(matchId, req.body);
 
-        await t.commit();
-
-        // 5. Firebase Broadcast
-        const firebaseSyncService = require('../services/firebaseSyncService');
-        await firebaseSyncService.syncCricketBall(matchId, {
-            score_details: match.score_details,
-            last_ball_event: ballEvent
-            // Note: In a full implementation, you'd also gather target batsman/bowler stats here
-        });
-
-        res.json({ message: 'Ball logged', score: match.score_details });
+        res.json({ message: 'Ball logged (Firebase)', score: match.score_details, ball: ballEvent });
 
     } catch (error) {
-        if (t) await t.rollback();
+        logger.error(`❌ Cricket Score Error: ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 };
 
-// Update Match Score (Legacy/Generic Wrapper)
+// Update Match Score (Generic Wrapper & Status Changes)
 exports.updateScore = async (req, res) => {
     try {
         const { matchId } = req.params;
+        const { status } = req.body;
+
         const match = await matchService.updateMatchStatus(matchId, req.body);
 
-        // Sync with Firebase
-        const firebaseSyncService = require('../services/firebaseSyncService');
-        await firebaseSyncService.syncMatchUpdate(matchId, {
-            score_details: match.score_details,
-            status: match.status,
-            winner_id: match.winner_id
-        });
+        // If match is completed, perform final archival from Firebase to MySQL
+        if (status === 'completed' || status === 'finished') {
+            try {
+                await scoringService.syncFinalToMySQL(matchId);
+            } catch (archiveError) {
+                logger.error(`⚠️ Archival Sync Failed for Match ${matchId}: ${archiveError.message}`);
+            }
+        }
 
-        res.json({ message: 'Score updated', match });
+        // Sync metadata/status with Firebase
+        const firebaseSyncService = require('../services/firebaseSyncService');
+        await firebaseSyncService.syncFullMatch(match);
+
+        res.json({ message: 'Score/Status updated', match });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

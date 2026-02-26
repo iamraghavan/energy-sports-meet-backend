@@ -18,102 +18,138 @@ const tryParse = (val) => {
 };
 
 /**
- * Shared logic for standard sports (Football, etc.)
+ * Shared logic for standard sports (Football, Kabaddi, etc.) - Firebase-Centric
  */
-exports.processStandardScore = async (matchId, data, transaction) => {
+exports.processStandardScore = async (matchId, data) => {
     const { points, team_id, player_id, event_type, details } = data;
+    const firebaseSyncService = require('./firebaseSyncService');
 
-    const match = await Match.findByPk(matchId, { transaction });
-    if (!match) throw new Error('Match not found');
+    const updatedState = await firebaseSyncService.updateMatchLiveState(matchId, (currentData) => {
+        const score = currentData.score_details || {};
+        const playerStats = currentData.player_performance || {};
 
-    // 1. Update Global Score
-    let currentScore = tryParse(match.score_details);
+        if (!score[team_id]) score[team_id] = { score: 0 };
+        
+        const prevScore = score[team_id].score || 0;
+        score[team_id].score = prevScore + (points || 0);
 
-    if (!currentScore[team_id]) currentScore[team_id] = { score: 0 };
-    
-    const prevScore = currentScore[team_id].score || 0;
-    currentScore[team_id].score = prevScore + (points || 0);
+        if (player_id) {
+            const s = playerStats[player_id] || {};
+            const key = event_type || 'points';
+            s[key] = (s[key] || 0) + (points || 1);
+            playerStats[player_id] = s;
+        }
 
-    // 2. Log Event
+        return {
+            ...currentData,
+            score_details: score,
+            player_performance: playerStats
+        };
+    });
+
+    // 2. Create Event Record
     const newEvent = {
         timestamp: new Date(),
         event_type: event_type || 'score',
         team_id,
-        player_id,
-        value: points,
-        details: details || `${prevScore} + ${points} = ${currentScore[team_id].score}`
+        player_id: player_id || null,
+        value: points || 0,
+        details: details || `+${points} points (New Score: ${updatedState.score_details[team_id].score})`
     };
-    const events = match.match_events || [];
-    
-    match.score_details = currentScore;
-    match.match_events = [...events, newEvent];
-    match.changed('score_details', true);
-    match.changed('match_events', true);
-    await match.save({ transaction });
 
-    // 3. Update Player Performance
-    if (player_id) {
-        const mp = await MatchPlayer.findOne({
-            where: { match_id: matchId, student_id: player_id },
-            transaction
-        });
-        if (mp) {
-            let stats = (mp.performance_stats && typeof mp.performance_stats === 'object' && !Array.isArray(mp.performance_stats))
-                ? { ...mp.performance_stats }
-                : {};
-            const key = event_type || 'points';
-            stats[key] = (stats[key] || 0) + (points || 1);
-            mp.performance_stats = stats;
-            mp.changed('performance_stats', true);
-            await mp.save({ transaction });
-        }
-    }
+    // Firebase History (Universal point-by-point tracking)
+    await firebaseSyncService.syncMatchEvent(matchId, newEvent);
 
-    return { match, newEvent };
+    return { match: updatedState, newEvent };
 };
 
 /**
- * Shared logic for Cricket (Ball-by-ball)
+ * Shared logic for Cricket (Ball-by-ball) - Firebase-Centric
  */
-exports.processCricketBall = async (matchId, data, transaction) => {
+exports.processCricketBall = async (matchId, data) => {
     const { 
         runs, is_wicket, wicket_type, extras, extra_type, 
         batting_team_id, striker_id, non_striker_id, bowler_id
     } = data;
 
-    const match = await Match.findByPk(matchId, { transaction });
-    if (!match) throw new Error('Match not found');
-
-    const runsScored = (runs || 0);
-    const extraRuns = (extras || 0);
-    const totalBallRuns = runsScored + extraRuns;
-
-    // 1. Update Team Score
-    let score = tryParse(match.score_details);
-        
-    if (!score[batting_team_id] || typeof score[batting_team_id] !== 'object') {
-        score[batting_team_id] = { runs: 0, wickets: 0, balls: 0, overs: "0.0" };
-    }
-
-    score[batting_team_id].runs += totalBallRuns;
-    if (is_wicket) score[batting_team_id].wickets += 1;
-
-    const isLegalBall = !['wide', 'noball'].includes(extra_type);
-    if (isLegalBall) {
-        score[batting_team_id].balls = (score[batting_team_id].balls || 0) + 1;
-        score[batting_team_id].overs = toOverNotation(score[batting_team_id].balls);
-    }
-
-    // 2. Track State (Strike Rotation)
-    let state = tryParse(match.match_state);
+    const firebaseSyncService = require('./firebaseSyncService');
     
-    // Simple strike rotation: 1 or 3 runs rotates strike
-    if (runsScored % 2 !== 0 && striker_id && non_striker_id) {
-        state.striker_id = non_striker_id;
-        state.non_striker_id = striker_id;
-    }
+    const updatedState = await firebaseSyncService.updateMatchLiveState(matchId, (currentData) => {
+        const score = currentData.score_details || {};
+        const state = currentData.match_state || {};
+        const playerStats = currentData.player_performance || {};
 
-    // 3. Log Event
+        const runsScored = (runs || 0);
+        const extraRuns = (extras || 0);
+        const totalBallRuns = runsScored + extraRuns;
+
+        if (!score[batting_team_id]) {
+            score[batting_team_id] = { runs: 0, wickets: 0, balls: 0, overs: "0.0" };
+        }
+
+        const team = score[batting_team_id];
+        team.runs += totalBallRuns;
+        if (is_wicket) team.wickets += 1;
+
+        const isLegalBall = !['wide', 'noball'].includes(extra_type);
+        if (isLegalBall) {
+            team.balls = (team.balls || 0) + 1;
+            team.overs = toOverNotation(team.balls);
+        }
+
+        if (runsScored % 2 !== 0 && striker_id && non_striker_id) {
+            state.striker_id = non_striker_id;
+            state.non_striker_id = striker_id;
+        } else {
+            state.striker_id = striker_id || state.striker_id;
+            state.non_striker_id = non_striker_id || state.non_striker_id;
+        }
+        state.bowler_id = bowler_id || state.bowler_id;
+        state.batting_team_id = batting_team_id;
+
+        if (striker_id) {
+            const s = playerStats[striker_id] || { runs: 0, balls: 0, fours: 0, sixes: 0 };
+            if (extra_type !== 'wide') s.balls = (s.balls || 0) + 1;
+            s.runs = (s.runs || 0) + runsScored;
+            if (runsScored === 4) s.fours = (s.fours || 0) + 1;
+            if (runsScored === 6) s.sixes = (s.sixes || 0) + 1;
+            playerStats[striker_id] = s;
+        }
+
+        if (bowler_id) {
+            const s = playerStats[bowler_id] || { balls: 0, overs: "0.0", runs_conceded: 0, wickets: 0, wides: 0, noballs: 0 };
+            const bowlerRuns = runsScored + (['wide', 'noball'].includes(extra_type) ? extraRuns : 0);
+            s.runs_conceded = (s.runs_conceded || 0) + bowlerRuns;
+            if (isLegalBall) {
+                s.balls = (s.balls || 0) + 1;
+                s.overs = toOverNotation(s.balls);
+            }
+            if (extra_type === 'wide') s.wides = (s.wides || 0) + 1;
+            if (extra_type === 'noball') s.noballs = (s.noballs || 0) + 1;
+            if (is_wicket && !['runout', 'retired_hurt'].includes(wicket_type)) {
+                s.wickets = (s.wickets || 0) + 1;
+            }
+            playerStats[bowler_id] = s;
+        }
+
+        return {
+            ...currentData,
+            score_details: score || {},
+            match_state: state || {},
+            player_performance: playerStats || {},
+            last_ball: {
+                runs: runsScored || 0,
+                extras: extraRuns || 0,
+                extra_type: extra_type || null,
+                is_wicket: !!is_wicket,
+                wicket_type: wicket_type || null,
+                striker_id: striker_id || null,
+                bowler_id: bowler_id || null,
+                timestamp: Date.now()
+            }
+        };
+    });
+
     const ballEvent = {
         timestamp: new Date(),
         event_type: 'delivery',
@@ -125,70 +161,13 @@ exports.processCricketBall = async (matchId, data, transaction) => {
         wicket_type,
         striker_id,
         bowler_id,
-        overs: score[batting_team_id].overs,
-        commentary: `${score[batting_team_id].overs}: ${runs} runs${is_wicket ? `, WICKET (${wicket_type})` : ''}`
+        overs: updatedState.score_details[batting_team_id].overs,
+        commentary: `${updatedState.score_details[batting_team_id].overs}: ${runs} runs${is_wicket ? `, WICKET (${wicket_type})` : ''}`
     };
-    
-    const events = match.match_events || [];
-    match.match_events = [...events, ballEvent];
-    match.score_details = score;
-    match.match_state = state;
-    
-    match.changed('score_details', true);
-    match.changed('match_events', true);
-    match.changed('match_state', true);
-    await match.save({ transaction });
 
-    // 3. Update Striker Stats
-    if (striker_id) {
-        const bats = await MatchPlayer.findOne({ where: { match_id: matchId, student_id: striker_id }, transaction });
-        if (bats) {
-            let s = (bats.performance_stats && typeof bats.performance_stats === 'object' && !Array.isArray(bats.performance_stats))
-                ? { ...bats.performance_stats }
-                : { runs: 0, balls: 0, fours: 0, sixes: 0 };
-                
-            if (extra_type !== 'wide') s.balls = (s.balls || 0) + 1;
-            s.runs = (s.runs || 0) + runsScored;
-            if (runsScored === 4) s.fours = (s.fours || 0) + 1;
-            if (runsScored === 6) s.sixes = (s.sixes || 0) + 1;
-            
-            bats.performance_stats = s;
-            bats.changed('performance_stats', true);
-            await bats.save({ transaction });
-        }
-    }
-    
-    // 4. Update Bowler Stats
-    if (bowler_id) {
-        const bowl = await MatchPlayer.findOne({ where: { match_id: matchId, student_id: bowler_id }, transaction });
-        if (bowl) {
-            let s = (bowl.performance_stats && typeof bowl.performance_stats === 'object' && !Array.isArray(bowl.performance_stats))
-                ? { ...bowl.performance_stats }
-                : { balls: 0, overs: "0.0", runs_conceded: 0, wickets: 0, wides: 0, noballs: 0 };
-                
-            // Wides and No-balls add to bowler's runs_conceded
-            const bowlerRuns = runsScored + (['wide', 'noball'].includes(extra_type) ? extraRuns : 0);
-            s.runs_conceded = (s.runs_conceded || 0) + bowlerRuns;
-            
-            if (isLegalBall) {
-                s.balls = (s.balls || 0) + 1;
-                s.overs = toOverNotation(s.balls);
-            }
+    await firebaseSyncService.syncCricketBall(matchId, { last_ball_event: ballEvent });
 
-            if (extra_type === 'wide') s.wides = (s.wides || 0) + 1;
-            if (extra_type === 'noball') s.noballs = (s.noballs || 0) + 1;
-            
-            if (is_wicket && !['runout', 'retired_hurt'].includes(wicket_type)) {
-                s.wickets = (s.wickets || 0) + 1;
-            }
-            
-            bowl.performance_stats = s;
-            bowl.changed('performance_stats', true);
-            await bowl.save({ transaction });
-        }
-    }
-
-    return { match, ballEvent };
+    return { match: updatedState, ballEvent };
 };
 
 /**
@@ -300,6 +279,46 @@ exports.updateTimer = async (matchId, timerData) => {
     await match.save();
 
     return match;
+};
+
+/**
+ * Syncs the final state from Firebase back to MySQL for long-term archival.
+ * Called when match status moves to 'completed'.
+ */
+exports.syncFinalToMySQL = async (matchId) => {
+    const firebaseSyncService = require('./firebaseSyncService');
+    const liveData = await firebaseSyncService.getMatchLiveState(matchId);
+    
+    if (!liveData) {
+        logger.warn(`⚠️ No live data found in Firebase for archival: ${matchId}`);
+        return;
+    }
+
+    const t = await sequelize.transaction();
+    try {
+        // 1. Update Match Score & History
+        await Match.update({
+            score_details: liveData.score_details || {},
+            match_state: liveData.match_state || {},
+            match_events: liveData.match_events || []
+        }, { where: { id: matchId }, transaction: t });
+
+        // 2. Update Player Performance Stats
+        const stats = liveData.player_performance || {};
+        for (const [studentId, performance] of Object.entries(stats)) {
+            await MatchPlayer.update(
+                { performance_stats: performance },
+                { where: { match_id: matchId, student_id: studentId }, transaction: t }
+            );
+        }
+
+        await t.commit();
+        logger.info(`✅ Match Archival Success (MySQL): ${matchId}`);
+    } catch (error) {
+        if (t) await t.rollback();
+        logger.error(`❌ Match Archival Error (MySQL): ${matchId}`, error);
+        throw error;
+    }
 };
 
 /**

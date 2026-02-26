@@ -50,44 +50,55 @@ async function runSimulation() {
 
         console.log(`Match Created: ${match.id}`);
 
-        // 3. Simulate Balls
+        // 3. Simulated Scoring (Firebase-Centric)
+        console.log('\n--- Starting Firebase-Centric Scoring Simulation ---');
         const balls = [
-            { runs: 4, extras: 0, striker_id: striker.id, bowler_id: bowler.id }, // OK: 0.1, Striker 4
-            { runs: 1, extras: 0, striker_id: striker.id, bowler_id: bowler.id }, // OK: 0.2, Striker 5, Strike Rotates
-            { runs: 0, extras: 1, extra_type: 'wide', striker_id: nonStriker.id, bowler_id: bowler.id }, // Wide: Still 0.2, Bowler 1 run
-            { runs: 0, extras: 0, is_wicket: true, wicket_type: 'bowled', striker_id: nonStriker.id, bowler_id: bowler.id }, // Wicket: 0.3, Bowler 1 wicket
-            { runs: 6, extras: 0, striker_id: striker.id, bowler_id: bowler.id } // Six: 0.4
+            { runs: 4, extras: 0, striker_id: striker.id, bowler_id: bowler.id }, // OK: 0.1
+            { runs: 1, extras: 0, striker_id: striker.id, bowler_id: bowler.id }, // OK: 0.2
+            { runs: 0, extras: 1, extra_type: 'wide', striker_id: nonStriker.id, bowler_id: bowler.id }, // Still 0.2
+            { runs: 0, extras: 0, is_wicket: true, wicket_type: 'bowled', striker_id: nonStriker.id, bowler_id: bowler.id }, // 0.3
+            { runs: 6, extras: 0, striker_id: striker.id, bowler_id: bowler.id } // 0.4
         ];
 
-        let currentStriker = striker.id;
-        let currentNonStriker = nonStriker.id;
+        // Ensure SQL transaction is committed before Firebase starts (since Firebase doesn't know about SQL transaction)
+        await t.commit();
 
         for (let i = 0; i < balls.length; i++) {
             const ball = balls[i];
-            console.log(`Ball ${i+1}: ${ball.runs} runs, ${ball.extra_type || 'Legal'}${ball.is_wicket ? ', Wicket!' : ''}`);
-            
             const result = await scoringService.processCricketBall(match.id, {
                 ...ball,
                 batting_team_id: teamA.id,
-                striker_id: ball.striker_id, // Simulate the caller passing the correct striker
-                non_striker_id: currentNonStriker,
+                striker_id: ball.striker_id,
+                non_striker_id: nonStriker.id,
                 bowler_id: bowler.id
-            }, t);
+            });
 
-            // Mock Firebase Sync (since we are in transaction)
-            console.log(` Score: ${JSON.stringify(result.match.score_details[teamA.id])}`);
+            const teamScore = result.match.score_details[teamA.id];
+            console.log(`Ball ${i + 1}: ${ball.runs} runs, ${ball.extra_type || 'Legal'}${ball.is_wicket ? ', Wicket!' : ''}`);
+            console.log(` Score: ${JSON.stringify(teamScore)}`);
         }
 
-        await t.commit();
+        // 5. Test Football Scoring (Standard Point-by-Point)
+        console.log('\n--- Starting Football Scoring Simulation ---');
+        const footballMatch = await Match.create({
+            sport_id: sport.id, // Reusing same sport id for simplicity in mock
+            team_a_id: teamA.id,
+            team_b_id: teamB.id,
+            status: 'live'
+        });
+
+        await scoringService.processStandardScore(footballMatch.id, {
+            team_id: teamA.id,
+            points: 1,
+            event_type: 'goal',
+            details: 'Stunning header by Team A striker!'
+        });
+
+        const fbState = await firebaseSyncService.getMatchLiveState(footballMatch.id);
+        console.log(`Football Score: ${JSON.stringify(fbState.score_details[teamA.id])}`);
+        console.log(`History Entries: ${Object.keys(fbState.match_history || {}).length}`);
+
         console.log('--- Simulation Successful ---');
-
-        // 4. Final Verification
-        const finalStriker = await MatchPlayer.findOne({ where: { match_id: match.id, student_id: striker.id } });
-        const finalBowler = await MatchPlayer.findOne({ where: { match_id: match.id, student_id: bowler.id } });
-        
-        console.log('Striker Stats:', JSON.stringify(finalStriker.performance_stats, null, 2));
-        console.log('Bowler Stats:', JSON.stringify(finalBowler.performance_stats, null, 2));
-
         process.exit(0);
     } catch (error) {
         if (t) await t.rollback();
