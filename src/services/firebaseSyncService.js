@@ -71,6 +71,7 @@ exports.syncFullMatch = async (match) => {
 
     const scoreDetails = parseJson(match.score_details);
     const matchState = parseJson(match.match_state);
+    const matchEvents = parseJson(match.match_events);
 
     // Structure the data for the frontend
     const payload = {
@@ -95,13 +96,36 @@ exports.syncFullMatch = async (match) => {
         match_state: matchState,
         toss: matchState?.toss || null,
         striker_id: matchState?.striker_id || null,
-        non_striker_id: matchState?.non_striker_id || null
+        non_striker_id: matchState?.non_striker_id || null,
+        match_events: matchEvents || []
     };
     await pushToFirebase(`sports/matches/${match.id}`, payload);
 };
 
-exports.syncCricketBall = async (matchId, cricketData) => {
+/**
+ * Appends a single event to the match's historical timeline in Firebase.
+ * Useful for ball-by-ball history or point-by-point updates.
+ */
+const logEventToHistory = async (matchId, event, nodeName = 'ball_history') => {
+    if (!db || !event) return;
+    try {
+        const ref = db.ref(`sports/matches/${matchId}/${nodeName}`);
+        await ref.push({
+            ...event,
+            server_timestamp: Date.now()
+        });
+        logger.info(`🥎 Event Logged to Firebase History (${nodeName}): ${matchId}`);
+    } catch (error) {
+        logger.error(`❌ Firebase History Error for ${matchId}:`, error);
+    }
+};
 
-    // Expected to receive the granular data needed by frontend
+exports.syncCricketBall = async (matchId, cricketData) => {
+    // 1. Update the main match node (Score, State, last ball)
     await pushToFirebase(`sports/matches/${matchId}`, cricketData);
+
+    // 2. Append to ball history
+    if (cricketData.last_ball_event) {
+        await logEventToHistory(matchId, cricketData.last_ball_event, 'ball_history');
+    }
 };

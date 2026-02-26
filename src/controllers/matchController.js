@@ -84,6 +84,11 @@ exports.updateScoreStandard = async (req, res) => {
         const firebaseSyncService = require('../services/firebaseSyncService');
         await firebaseSyncService.syncScore(matchId, match.score_details);
         await firebaseSyncService.syncMatchUpdate(matchId, { last_event: newEvent });
+        
+        // Log to history node for chronological feed
+        await firebaseSyncService.syncCricketBall(matchId, { // Reusing logic for consistency
+            last_ball_event: newEvent 
+        });
 
         res.json({ message: 'Standard score updated', score: match.score_details });
 
