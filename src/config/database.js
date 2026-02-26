@@ -1,4 +1,5 @@
 const { Sequelize } = require('sequelize');
+require('mysql2'); // Explicitly require for Vercel/Bundler compatibility
 require('dotenv').config();
 
 // MySQL Configuration for Hostinger
