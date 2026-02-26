@@ -9,6 +9,7 @@ const logger = require('./utils/logger');
 require('dotenv').config();
 
 const app = express();
+app.set('trust proxy', true);
 const crypto = require('crypto');
 
 // Assign a unique Request ID to every incoming request
