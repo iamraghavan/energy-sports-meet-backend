@@ -228,7 +228,22 @@ exports.getRegistrations = async (req, res) => {
         let whereClause = {};
 
         if (role === 'sports_head' && assigned_sport_id) {
-            // Filter logic for sports head
+            const { getRelevantSportIds } = require('../utils/sportUtils');
+            const sportIds = await getRelevantSportIds(assigned_sport_id);
+            
+            const registrations = await Registration.findAll({
+                include: [
+                    { 
+                        model: Sport, 
+                        where: { id: { [Op.in]: sportIds } },
+                        required: true 
+                    }, 
+                    { model: Team, as: 'Teams' }, 
+                    { model: Payment }
+                ],
+                order: [['created_at', 'DESC']]
+            });
+            return res.json(registrations);
         }
 
         const registrations = await Registration.findAll({

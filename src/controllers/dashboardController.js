@@ -57,17 +57,19 @@ exports.getDashboardStats = async (req, res) => {
         else if (role === 'sports_head') {
             if (!assigned_sport_id) return res.status(400).json({ error: 'No sport assigned to this Sports Head' });
 
+            const { getRelevantSportIds } = require('../utils/sportUtils');
+            const sportIds = await getRelevantSportIds(assigned_sport_id);
             const sport = await Sport.findByPk(assigned_sport_id);
             if (!sport) return res.status(404).json({ error: 'Assigned Sport not found' });
             
             // Count Teams
-            const teamCount = await Team.count({ where: { sport_id: assigned_sport_id } });
+            const teamCount = await Team.count({ where: { sport_id: { [Op.in]: sportIds } } });
             
             // Count Players (Approximated by Registrations for that sport)
             const playerCount = await Registration.count({
                 include: [{
                     model: Sport,
-                    where: { id: assigned_sport_id }
+                    where: { id: { [Op.in]: sportIds } }
                 }],
                 where: { status: 'approved' }
             });
@@ -75,21 +77,21 @@ exports.getDashboardStats = async (req, res) => {
             // Matches
             const upcomingMatches = await Match.count({
                 where: {
-                    sport_id: assigned_sport_id,
+                    sport_id: { [Op.in]: sportIds },
                     start_time: { [Op.gt]: new Date() },
                     status: 'scheduled'
                 }
             });
             const completedMatches = await Match.count({
                 where: {
-                    sport_id: assigned_sport_id,
+                    sport_id: { [Op.in]: sportIds },
                     status: 'completed'
                 }
             });
 
              // Recent Activity
              const recentRegistrations = await Registration.findAll({
-                include: [{ model: Sport, where: { id: assigned_sport_id }, attributes: [] }],
+                include: [{ model: Sport, where: { id: { [Op.in]: sportIds } }, attributes: [] }],
                 where: { status: 'approved' },
                 limit: 5,
                 order: [['created_at', 'DESC']],
@@ -97,14 +99,14 @@ exports.getDashboardStats = async (req, res) => {
             });
 
             stats = {
-                title: `${sport.name} Overview`,
+                title: `${sport.name} Overview (Combined)`,
                 kpi: [
                     { label: 'Total Teams', value: teamCount, icon: 'shield' },
                     { label: 'Registered Players', value: playerCount, icon: 'users' },
                     { label: 'Upcoming Matches', value: upcomingMatches, icon: 'calendar' },
                     { label: 'Completed Matches', value: completedMatches, icon: 'check-circle' }
                 ],
-                recent_activity: recentRegistrations, // Added this field
+                recent_activity: recentRegistrations,
                 actions: [
                     { label: 'Create Team', link: '/dashboard/teams/new' },
                     { label: 'Schedule Match', link: '/dashboard/matches/new' }
@@ -144,14 +146,17 @@ exports.getDashboardStats = async (req, res) => {
         // ------------------------------------
         else if (role === 'scorer') {
             const assigned_sport_id = req.user.assigned_sport_id;
+            const { getRelevantSportIds } = require('../utils/sportUtils');
+            const sportIds = await getRelevantSportIds(assigned_sport_id);
+
             let whereMatch = {};
-            if (assigned_sport_id) whereMatch.sport_id = assigned_sport_id;
+            if (sportIds.length > 0) whereMatch.sport_id = { [Op.in]: sportIds };
 
             const liveMatches = await Match.count({ where: { ...whereMatch, status: 'live' } });
             const scheduledMatches = await Match.count({ where: { ...whereMatch, status: 'scheduled' } });
             
             stats = {
-                title: 'Scorer Dashboard',
+                title: 'Scorer Dashboard (Combined)',
                 kpi: [
                     { label: 'Live Matches', value: liveMatches, icon: 'activity', color: 'red', animate: true },
                     { label: 'Scheduled Matches', value: scheduledMatches, icon: 'calendar' }

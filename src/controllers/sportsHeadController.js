@@ -1,5 +1,6 @@
 const { Match, Team, Sport, Registration, Student, College, sequelize, TeamMember } = require('../models');
 const { Op } = require('sequelize');
+const { getRelevantSportIds } = require('../utils/sportUtils');
 
 // ==========================================
 // OVERVIEW STATS
@@ -9,17 +10,16 @@ const { Op } = require('sequelize');
 // @access  Private (Sports Head)
 exports.getOverviewStats = async (req, res) => {
     try {
-        const sport_id = req.user.assigned_sport_id;
+        const sportIds = await getRelevantSportIds(req.user.assigned_sport_id);
 
         // 1. Total Teams
-        const totalTeams = await Team.count({ where: { sport_id } });
+        const totalTeams = await Team.count({ where: { sport_id: { [Op.in]: sportIds } } });
 
         // 2. Total Registered Players (Approved Registrations for this Sport)
-        // Note: This counts approved registrations, not necessarily players assigned to teams.
         const totalPlayers = await Registration.count({
             include: [{
                 model: Sport,
-                where: { id: sport_id }
+                where: { id: { [Op.in]: sportIds } }
             }],
             where: { status: 'approved' }
         });
@@ -27,7 +27,7 @@ exports.getOverviewStats = async (req, res) => {
         // 3. Upcoming Matches
         const upcomingMatches = await Match.count({
             where: {
-                sport_id,
+                sport_id: { [Op.in]: sportIds },
                 start_time: { [Op.gt]: new Date() },
                 status: 'scheduled'
             }
@@ -36,14 +36,14 @@ exports.getOverviewStats = async (req, res) => {
         // 4. Live Matches (Optional, if applicable)
         const liveMatches = await Match.count({
             where: {
-                sport_id,
-                status: 'live' // Assuming 'live' status exists
+                sport_id: { [Op.in]: sportIds },
+                status: 'live' 
             }
         });
         
         // 5. Recent Activity (Last 5 approved registrations)
         const recentRegistrations = await Registration.findAll({
-            include: [{ model: Sport, where: { id: sport_id }, attributes: [] }],
+            include: [{ model: Sport, where: { id: { [Op.in]: sportIds } }, attributes: [] }],
             where: { status: 'approved' },
             limit: 5,
             order: [['created_at', 'DESC']],
@@ -69,22 +69,22 @@ exports.getOverviewStats = async (req, res) => {
 // @access  Private (Sports Head)
 exports.getAnalytics = async (req, res) => {
     try {
-        const sport_id = req.user.assigned_sport_id;
+        const sportIds = await getRelevantSportIds(req.user.assigned_sport_id);
 
         // 1. Match Statistics
         const matches = await Match.findAll({
-            where: { sport_id },
+            where: { sport_id: { [Op.in]: sportIds } },
             attributes: ['status', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
             group: ['status']
         });
 
         // 2. Team Statistics (Player counts per team)
         const teams = await Team.findAll({
-            where: { sport_id },
+            where: { sport_id: { [Op.in]: sportIds } },
             attributes: ['id', 'team_name'],
             include: [{
                 model: TeamMember,
-                as: 'Members', // Ensure alias definition in models/index.js match this
+                as: 'Members',
                 attributes: []
             }],
             attributes: [
@@ -120,10 +120,10 @@ exports.getAnalytics = async (req, res) => {
 // @access  Private (Sports Head)
 exports.getMatches = async (req, res) => {
     try {
-        const sport_id = req.user.assigned_sport_id;
-        const { status } = req.query; // Optional filter: scheduled, live, completed
+        const sportIds = await getRelevantSportIds(req.user.assigned_sport_id);
+        const { status } = req.query; 
 
-        let whereClause = { sport_id };
+        let whereClause = { sport_id: { [Op.in]: sportIds } };
         if (status) {
             whereClause.status = status;
         }
@@ -150,8 +150,9 @@ exports.scheduleMatch = async (req, res) => {
     try {
         const { sport_id, team_a_id, team_b_id, start_time, venue, referee_name } = req.body;
 
-        if (req.user.role === 'sports_head' && sport_id !== req.user.assigned_sport_id) {
-            return res.status(403).json({ error: 'You can only schedule matches for your assigned sport.' });
+        const sportIds = await getRelevantSportIds(req.user.assigned_sport_id);
+        if (req.user.role === 'sports_head' && !sportIds.includes(parseInt(sport_id))) {
+            return res.status(403).json({ error: 'You can only schedule matches for your assigned sport categories.' });
         }
 
         const match = await Match.create({
@@ -197,15 +198,13 @@ exports.updateMatch = async (req, res) => {
 // @access  Private (Sports Head)
 exports.getSportTeams = async (req, res) => {
     try {
-        const sport_id = req.user.assigned_sport_id;
+        const sportIds = await getRelevantSportIds(req.user.assigned_sport_id);
 
         // 1. Try to find explicit Team records
         let teams = await Team.findAll({
-            where: { sport_id },
+            where: { sport_id: { [Op.in]: sportIds } },
             include: [
                 { model: Sport, attributes: ['id', 'name', 'category'] },
-                // Captain info from Student if available, else handled by frontend? 
-                // Since Team has captain_id, it links to Student. If Student doesn't exist, this might be null.
                 {
                     model: Student,
                     as: 'Captain',
@@ -222,7 +221,7 @@ exports.getSportTeams = async (req, res) => {
                 include: [
                     {
                         model: Sport,
-                        where: { id: sport_id },
+                        where: { id: { [Op.in]: sportIds } },
                         attributes: ['id', 'name', 'category']
                     }
                 ],
@@ -254,10 +253,10 @@ exports.getSportTeams = async (req, res) => {
 exports.getTeamDetails = async (req, res) => {
     try {
         const { id } = req.params;
-        const sport_id = req.user.assigned_sport_id;
+        const sportIds = await getRelevantSportIds(req.user.assigned_sport_id);
 
         const team = await Team.findOne({ 
-            where: { id, sport_id },
+            where: { id, sport_id: { [Op.in]: sportIds } },
             include: [
                 { model: Sport, attributes: ['id', 'name'] },
                 { 
@@ -298,9 +297,13 @@ exports.createTeam = async (req, res) => {
     const t = await sequelize.transaction();
     try {
         const { team_name, registration_id } = req.body; 
-        // We require registration_id (of the captain/lead) to determine College and Owner.
         
-        const sport_id = req.user.assigned_sport_id;
+        const sportIds = await getRelevantSportIds(req.user.assigned_sport_id);
+        const sport_id = req.body.sport_id || req.user.assigned_sport_id;
+
+        if (req.user.role === 'sports_head' && !sportIds.includes(parseInt(sport_id))) {
+            return res.status(403).json({ error: 'You can only create teams for your assigned sport categories.' });
+        }
 
         if (!registration_id) {
             await t.rollback();
@@ -408,8 +411,8 @@ exports.deleteTeam = async (req, res) => {
 // @access  Private (Sports Head)
 exports.getAllStudents = async (req, res) => {
     try {
-        const sport_id = req.user.assigned_sport_id;
-        
+        const sportIds = await getRelevantSportIds(req.user.assigned_sport_id);
+
         // Fetch from Registration, not Student
         const registrations = await Registration.findAll({
             // Fix: Remove sport_id from top-level where clause as it's not a column
@@ -417,7 +420,7 @@ exports.getAllStudents = async (req, res) => {
             include: [
                 {
                     model: Sport, 
-                    where: { id: sport_id },
+                    where: { id: { [Op.in]: sportIds } },
                     required: true
                 },
                 { model: Team, as: 'Teams', attributes: ['id', 'team_name'] }
@@ -530,15 +533,15 @@ exports.removePlayerFromTeam = async (req, res) => {
 // @access  Private (Sports Head)
 exports.getRegistrations = async (req, res) => {
     try {
-        const sport_id = req.user.assigned_sport_id;
+        const sportIds = await getRelevantSportIds(req.user.assigned_sport_id);
         
         const registrations = await Registration.findAll({
             include: [
                 {
                     model: Sport,
-                    where: { id: sport_id },
+                    where: { id: { [Op.in]: sportIds } },
                     required: true,
-                    attributes: ['id', 'name']
+                    attributes: ['id', 'name', 'category']
                 },
                 {
                     model: Team,

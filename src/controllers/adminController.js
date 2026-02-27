@@ -140,14 +140,14 @@ exports.getAnalytics = async (req, res) => {
         // Count registrations by sport via the RegistrationSport junction table
         const registrationsBySport = await RegistrationSport.findAll({
             attributes: [
-                'sport_id',
+                [sequelize.col('Sport.name'), 'name'],
                 [sequelize.fn('COUNT', sequelize.col('registration_id')), 'count']
             ],
             include: [{
                 model: Sport,
-                attributes: ['name']
+                attributes: []
             }],
-            group: ['sport_id', 'Sport.id']
+            group: ['Sport.name']
         });
 
         res.json({
