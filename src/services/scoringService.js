@@ -282,6 +282,48 @@ exports.updateTimer = async (matchId, timerData) => {
 };
 
 /**
+ * Atomic Toss Update (Firebase-First)
+ */
+exports.processTossUpdate = async (matchId, data) => {
+    const { winner_id, decision, details } = data;
+    const firebaseSyncService = require('./firebaseSyncService');
+
+    const updatedState = await firebaseSyncService.updateMatchLiveState(matchId, (currentData) => {
+        const state = currentData.match_state || {};
+        state.toss = {
+            winner_id,
+            decision,
+            details,
+            timestamp: Date.now()
+        };
+        return { ...currentData, match_state: state };
+    });
+
+    return { match: updatedState, toss: updatedState.match_state.toss };
+};
+
+/**
+ * Atomic Match State Update (Strikers, Bowlers, Innings)
+ */
+exports.processMatchStateUpdate = async (matchId, data) => {
+    const { striker_id, non_striker_id, bowler_id, batting_team_id, current_innings } = data;
+    const firebaseSyncService = require('./firebaseSyncService');
+
+    const updatedState = await firebaseSyncService.updateMatchLiveState(matchId, (currentData) => {
+        const state = currentData.match_state || {};
+        if (striker_id) state.striker_id = striker_id;
+        if (non_striker_id) state.non_striker_id = non_striker_id;
+        if (bowler_id) state.bowler_id = bowler_id;
+        if (batting_team_id) state.batting_team_id = batting_team_id;
+        if (current_innings) state.current_innings = current_innings;
+        state.last_state_change = Date.now();
+        return { ...currentData, match_state: state };
+    });
+
+    return { match: updatedState, state: updatedState.match_state };
+};
+
+/**
  * Syncs the final state from Firebase back to MySQL for long-term archival.
  * Called when match status moves to 'completed'.
  */

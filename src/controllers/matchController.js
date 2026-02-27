@@ -252,67 +252,26 @@ exports.updateLineup = async (req, res) => {
 exports.updateMatchEvent = async (req, res) => {
     try {
         const { matchId } = req.params;
-        const { event_type, player_id, team_id, value, key, details, score_override } = req.body;
+        const { points, value, event_type, player_id, team_id, details } = req.body;
 
-        const match = await Match.findByPk(matchId);
-        if (!match) return res.status(404).json({ error: 'Match not found' });
-
-        // 1. Log Event
-        const newEvent = {
-            timestamp: new Date(),
-            event_type,
-            player_id,
+        // Use the new standard scoring logic (Firebase-First)
+        // Note: 'value' and 'points' are often used interchangeably in different frontend versions
+        const { match, newEvent } = await scoringService.processStandardScore(matchId, {
+            points: points || value || 0,
             team_id,
-            value,
+            player_id,
+            event_type,
             details
-        };
-        const currentEvents = match.match_events || [];
-        match.match_events = [...currentEvents, newEvent];
-
-        // 2. Update Global Score
-        if (score_override) {
-            match.score_details = score_override;
-        } else {
-            let currentScore = match.score_details || {};
-            if (!currentScore[team_id]) currentScore[team_id] = {};
-            const targetKey = key || 'score';
-            if (currentScore[team_id][targetKey] === undefined) {
-                currentScore[team_id][targetKey] = 0;
-            }
-            currentScore[team_id][targetKey] += (value || 0);
-            match.score_details = currentScore;
-            match.changed('score_details', true);
-        }
-
-        await match.save();
-
-        // 3. Update Player Stats
-        if (player_id) {
-            const matchPlayer = await MatchPlayer.findOne({
-                where: { match_id: matchId, student_id: player_id }
-            });
-
-            if (matchPlayer) {
-                let stats = matchPlayer.performance_stats || {};
-                const statKey = key || event_type;
-                if (!stats[statKey]) stats[statKey] = 0;
-                stats[statKey] += (value || 1);
-                matchPlayer.performance_stats = stats;
-                matchPlayer.changed('performance_stats', true);
-                await matchPlayer.save();
-            }
-        }
-
-        // Emit Firebase Event
-        const firebaseSyncService = require('../services/firebaseSyncService');
-        await firebaseSyncService.syncMatchUpdate(matchId, { 
-            last_match_event: newEvent, 
-            score_details: match.score_details 
         });
 
-        res.json({ message: 'Event logged', score: match.score_details });
+        res.json({ 
+            message: 'Event logged to Firebase (MySQL skipped)', 
+            score: match.score_details,
+            event: newEvent 
+        });
 
     } catch (error) {
+        logger.error(`❌ Match Event Error: ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 };
@@ -352,33 +311,10 @@ exports.getScorerTeamDetails = async (req, res) => {
 exports.updateMatchState = async (req, res) => {
     try {
         const { matchId } = req.params;
-        const { striker_id, non_striker_id, bowler_id, batting_team_id, current_innings } = req.body;
-
-        const match = await Match.findByPk(matchId);
-        if (!match) return res.status(404).json({ error: 'Match not found' });
-
-        const newState = {
-            ...(match.match_state || {}),
-            striker_id: striker_id || (match.match_state?.striker_id),
-            non_striker_id: non_striker_id || (match.match_state?.non_striker_id),
-            bowler_id: bowler_id || (match.match_state?.bowler_id),
-            batting_team_id: batting_team_id || (match.match_state?.batting_team_id),
-            current_innings: current_innings || (match.match_state?.current_innings || 1),
-            updatedAt: new Date()
-        };
-
-        // Optimized: Targeted update instead of full save
-        await Match.update(
-            { match_state: newState }, 
-            { where: { id: matchId } }
-        );
-
-        // Broadcast to Firebase
-        const firebaseSyncService = require('../services/firebaseSyncService');
-        await firebaseSyncService.syncMatchUpdate(matchId, { match_state: newState });
-
-        res.json({ message: 'Match state updated', state: newState });
+        const { match, state } = await scoringService.processMatchStateUpdate(matchId, req.body);
+        res.json({ message: 'Match state updated (Firebase)', state });
     } catch (error) {
+        logger.error(`❌ Match State Error: ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 };
@@ -387,16 +323,10 @@ exports.updateMatchState = async (req, res) => {
 exports.updateToss = async (req, res) => {
     try {
         const { matchId } = req.params;
-        const { winner_id, decision, details } = req.body;
-
-        const match = await matchService.updateToss(matchId, { winner_id, decision, details });
-
-        // Firebase Broadcast
-        const firebaseSyncService = require('../services/firebaseSyncService');
-        await firebaseSyncService.syncMatchUpdate(matchId, { toss: match.match_state.toss });
-
-        res.json({ message: 'Toss updated successfully', toss: match.match_state.toss });
+        const { match, toss } = await scoringService.processTossUpdate(matchId, req.body);
+        res.json({ message: 'Toss updated (Firebase)', toss });
     } catch (error) {
+        logger.error(`❌ Toss Update Error: ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 };

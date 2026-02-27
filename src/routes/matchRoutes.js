@@ -20,6 +20,10 @@ router.delete('/:matchId', protect, authorize('super_admin', 'scorer'), matchCon
 // Score Updates (Emit Sockets)
 router.put('/:matchId/score', protect, authorize('super_admin', 'scorer'), matchController.updateScore);
 
+// Specialized Scoring Aliases (Fixes 404s)
+router.post('/:matchId/cricket', protect, authorize('super_admin', 'scorer'), matchController.updateScoreCricket);
+router.post('/:matchId/standard', protect, authorize('super_admin', 'scorer'), matchController.updateScoreStandard);
+
 // Lineup Management
 router.get('/:matchId/lineup', matchController.getMatchLineup);
 router.post('/:matchId/lineup', protect, authorize('super_admin', 'scorer'), matchController.updateLineup);
