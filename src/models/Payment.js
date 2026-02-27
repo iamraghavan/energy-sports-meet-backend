@@ -17,11 +17,11 @@ const Payment = sequelize.define('Payment', {
     },
     txn_id: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: true
     },
     screenshot_url: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: true
     },
     verified_by: {
         type: DataTypes.STRING,

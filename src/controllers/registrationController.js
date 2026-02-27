@@ -34,7 +34,7 @@ exports.registerStudent = async (req, res) => {
         }
 
         // Basic Validation
-        const requiredFields = ['name', 'email', 'mobile', 'txn_id', 'city', 'state'];
+        const requiredFields = ['name', 'email', 'mobile', 'city', 'state'];
         const missing = requiredFields.filter(f => !req.body[f]);
         if (missing.length > 0) {
             throw new Error(`Missing required fields: ${missing.join(', ')}`);
@@ -139,8 +139,6 @@ exports.registerStudent = async (req, res) => {
         let screenshotUrl = '';
         if (req.file) {
             screenshotUrl = await uploadToGitHub(req.file, 'payments');
-        } else {
-            throw new Error('Payment screenshot is required.');
         }
 
         // 8. Create Payment record

@@ -160,3 +160,15 @@
 2026-02-27 08:01:37:137 info: ⚡ Firebase Transaction Success: d2b913da-f353-484a-8f6a-620f43b8278d
 2026-02-27 08:01:37:137 info: 🔥 Firebase Sync Success: sports/matches/d2b913da-f353-484a-8f6a-620f43b8278d
 2026-02-27 08:01:37:137 info: ✨ Event Logged to Firebase History (match_history): d2b913da-f353-484a-8f6a-620f43b8278d
+2026-02-27 18:23:23:2323 info: 🚀 Server (HTTP) is running on port 8080 (Bound to 0.0.0.0)
+2026-02-27 18:23:26:2326 info: ✅ Database connection has been established successfully.
+2026-02-27 18:23:26:2326 info: 🚀 Starting Safe Migrations...
+2026-02-27 18:23:26:2326 info: ✔️ match_state already exists.
+2026-02-27 18:23:26:2326 info: 🏁 All migrations checked/applied.
+2026-02-27 18:23:27:2327 info: ✅ Database synchronized successfully.
+2026-02-27 18:23:35:2335 info: 🌐 [REQ] 3eb1cfa0-5fcb-44ae-8d4e-448e1b2c4561 | POST /api/v1/register | {"id":"3eb1cfa0-5fcb-44ae-8d4e-448e1b2c4561","ip":"127.0.0.1","query":{},"body":{"name":"Test Optional Student","email":"optional@test.com","mobile":"1234567890","whatsapp":"1234567890","city":"Salem","state":"Tamil Nadu","college_id":1,"selected_sport_ids":[1],"accommodation_needed":false},"userAgent":"axios/1.13.5"}
+2026-02-27 18:31:06:316 info: 🚀 Starting Safe Migrations...
+2026-02-27 18:31:06:316 info: ✔️ match_state already exists.
+2026-02-27 18:31:06:316 info: 🔧 Making txn_id nullable in payments...
+2026-02-27 18:31:06:316 info: 🔧 Making screenshot_url nullable in payments...
+2026-02-27 18:31:06:316 info: 🏁 All migrations checked/applied.

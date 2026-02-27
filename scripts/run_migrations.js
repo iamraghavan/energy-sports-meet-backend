@@ -19,10 +19,20 @@ async function runMigrations() {
             logger.info('✔️ match_state already exists.');
         }
 
-        // 2. Add other checks here as needed
-        // Example: Ensure MatchPlayer.performance_stats exists
-        // const [perfStatsCol] = await sequelize.query("SHOW COLUMNS FROM match_players LIKE 'performance_stats'");
-        // if (perfStatsCol.length === 0) { ... }
+        // 2. Payments: Make txn_id and screenshot_url nullable
+        const [paymentsCols] = await sequelize.query("SHOW COLUMNS FROM payments");
+        const txnIdCol = paymentsCols.find(c => c.Field === 'txn_id');
+        const screenshotCol = paymentsCols.find(c => c.Field === 'screenshot_url');
+
+        if (txnIdCol && txnIdCol.Null === 'NO') {
+            logger.info('🔧 Making txn_id nullable in payments...');
+            await sequelize.query("ALTER TABLE payments MODIFY COLUMN txn_id VARCHAR(255) NULL");
+        }
+
+        if (screenshotCol && screenshotCol.Null === 'NO') {
+            logger.info('🔧 Making screenshot_url nullable in payments...');
+            await sequelize.query("ALTER TABLE payments MODIFY COLUMN screenshot_url VARCHAR(255) NULL");
+        }
 
         logger.info('🏁 All migrations checked/applied.');
     } catch (error) {
