@@ -262,7 +262,7 @@ td {
   <div class="footer-codes">
     <div>
         <div class="section-title" style="margin-top:0">Total Amount</div>
-        <div style="font-size:16px; font-weight:bold; color:#0056b3">Rs. ${amount}.00</div>
+        <div style="font-size:16px; font-weight:bold; color:#0056b3">Rs. ${amount}</div>
         <div style="font-size:8px; color:#666; margin-top:2px;">Includes all taxes & fees</div>
     </div>
     
