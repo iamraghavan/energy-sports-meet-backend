@@ -135,7 +135,8 @@ exports.getLiveMatches = async (req, res) => {
         const { sportId } = req.query;
         let whereClause = { status: ['live', 'scheduled'] };
         if (sportId) {
-            whereClause.sport_id = sportId;
+            const sportIds = await getRelevantSportIds(sportId);
+            whereClause.sport_id = { [Op.in]: sportIds };
         }
 
         const matches = await Match.findAll({
@@ -157,9 +158,10 @@ exports.getLiveMatches = async (req, res) => {
 exports.getMatchesBySport = async (req, res) => {
     try {
         const { sportId } = req.params;
-        const { status } = req.query; // Support filtering by status (e.g., 'completed', 'scheduled')
+        const sportIds = await getRelevantSportIds(sportId);
+        const { status } = req.query; 
 
-        let whereClause = { sport_id: sportId };
+        let whereClause = { sport_id: { [Op.in]: sportIds } };
         if (status) {
             whereClause.status = status;
         }

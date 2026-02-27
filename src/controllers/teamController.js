@@ -1,4 +1,6 @@
 const { Team, Sport, Student, Registration, College, sequelize } = require('../models');
+const { getRelevantSportIds } = require('../utils/sportUtils');
+const { Op } = require('sequelize');
 
 // Get All Teams
 exports.getAllTeams = async (req, res) => {
@@ -61,10 +63,11 @@ exports.getTeamById = async (req, res) => {
 exports.getTeamsBySport = async (req, res) => {
     try {
         const { sportId } = req.params;
+        const sportIds = await getRelevantSportIds(sportId);
 
         // 1. Try to find explicit Team records
         let teams = await Team.findAll({
-            where: { sport_id: sportId },
+            where: { sport_id: { [Op.in]: sportIds } },
             include: [
                 { model: Sport, attributes: ['id', 'name', 'category'] },
                 {
@@ -82,7 +85,7 @@ exports.getTeamsBySport = async (req, res) => {
                 include: [
                     {
                         model: Sport,
-                        where: { id: sportId },
+                        where: { id: { [Op.in]: sportIds } },
                         attributes: ['id', 'name', 'category']
                     },
                     {
