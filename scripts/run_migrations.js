@@ -34,6 +34,16 @@ async function runMigrations() {
             await sequelize.query("ALTER TABLE payments MODIFY COLUMN screenshot_url VARCHAR(255) NULL");
         }
 
+        // 3. Colleges: short_name
+        const [collegeCols] = await sequelize.query("SHOW COLUMNS FROM colleges LIKE 'short_name'");
+        if (collegeCols.length === 0) {
+            logger.info('➕ Adding short_name to colleges table...');
+            await sequelize.query("ALTER TABLE colleges ADD COLUMN short_name VARCHAR(255) NULL AFTER name");
+            logger.info('✅ Added short_name.');
+        } else {
+            logger.info('✔️ short_name already exists.');
+        }
+
         logger.info('🏁 All migrations checked/applied.');
     } catch (error) {
         logger.error('❌ Migration Error:', error.message);

@@ -131,28 +131,62 @@ exports.updateScore = async (req, res) => {
     }
 };
 
-// Get Live Matches (All or Filtered)
-exports.getLiveMatches = async (req, res) => {
-    try {
-        const { sportId } = req.query;
-        let whereClause = { status: ['live', 'scheduled'] };
-        if (sportId) {
-            const sportIds = await getRelevantSportIds(sportId);
-            whereClause.sport_id = { [Op.in]: sportIds };
-        }
+// Helper to fetch live/scheduled matches data
+const fetchLiveMatchesData = async (sportId) => {
+    let whereClause = { status: ['live', 'scheduled'] };
+    if (sportId) {
+        const sportIds = await getRelevantSportIds(sportId);
+        whereClause.sport_id = { [Op.in]: sportIds };
+    }
 
-        const matches = await Match.findAll({
-            where: whereClause,
-            include: [
-                { model: Team, as: 'TeamA' },
-                { model: Team, as: 'TeamB' },
-                { model: Sport }
-            ],
-            order: [['start_time', 'ASC']]
+    return await Match.findAll({
+        where: whereClause,
+        include: [
+            { model: Team, as: 'TeamA' },
+            { model: Team, as: 'TeamB' },
+            { model: Sport }
+        ],
+        order: [['start_time', 'ASC']]
+    });
+};
+
+// Get Live Matches (All or Filtered) - Supports SSE
+exports.getLiveMatches = async (req, res) => {
+    const { sportId, stream } = req.query;
+    const isSSE = stream === 'true' || req.headers.accept === 'text/event-stream';
+
+    if (isSSE) {
+        // SSE Setup
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.flushHeaders(); // Establish connection
+
+        const sendUpdate = async () => {
+            try {
+                const data = await fetchLiveMatchesData(sportId);
+                res.write(`data: ${JSON.stringify(data)}\n\n`);
+            } catch (error) {
+                logger.error(`❌ SSE Error in Match Update: ${error.message}`);
+            }
+        };
+
+        // Send immediately, then interval
+        await sendUpdate();
+        const interval = setInterval(sendUpdate, 5000);
+
+        req.on('close', () => {
+            clearInterval(interval);
+            res.end();
         });
-        res.json(matches);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+    } else {
+        // Standard JSON Response
+        try {
+            const matches = await fetchLiveMatchesData(sportId);
+            res.json(matches);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
     }
 };
 
