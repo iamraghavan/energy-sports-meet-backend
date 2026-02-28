@@ -25,7 +25,14 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false,
     contentSecurityPolicy: false // Disable CSP for less-restricted WebSocket upgrades
 }));
-app.use(compression());
+app.use(compression({
+    filter: (req, res) => {
+        if (req.headers['accept'] === 'text/event-stream' || res.getHeader('Content-Type') === 'text/event-stream') {
+            return false;
+        }
+        return compression.filter(req, res);
+    }
+}));
 app.use(cors({
     origin: (origin, callback) => callback(null, true),
     credentials: true,

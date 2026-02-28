@@ -160,6 +160,7 @@ exports.getLiveMatches = async (req, res) => {
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no'); // Prevent Vercel/Nginx buffering
         res.flushHeaders(); // Establish connection
 
         const sendUpdate = async () => {
