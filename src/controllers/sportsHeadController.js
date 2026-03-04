@@ -234,7 +234,7 @@ exports.getSportTeams = async (req, res) => {
                 id: `REG-${reg.id}`,
                 team_name: reg.college_name || reg.name || 'Independent Player',
                 college_info: { name: reg.college_name, city: reg.college_city },
-                sport_id: sport_id,
+                sport_id: req.user.assigned_sport_id,
                 captain_id: reg.id, // Using Reg ID effectively
                 locked: false,
                 Sport: reg.Sports?.[0], 

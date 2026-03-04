@@ -335,9 +335,9 @@ exports.getOfficialReport = async (req, res) => {
         if (status) regWhere.status = status;
         if (college_id) regWhere.college_id = college_id;
 
-        // 2. Fetch Analytics (Independent of filters for dashboard view)
-        const totalCount = await Registration.count();
+        // 2. Fetch Detailed Analytics (Independent of filters for global dashboard)
         
+        // Basic Status Breakdown
         const statusBreakdown = await Registration.findAll({
             attributes: [
                 'status',
@@ -346,6 +346,7 @@ exports.getOfficialReport = async (req, res) => {
             group: ['status']
         });
 
+        // Revenue Breakdown
         const revenueResult = await Registration.findOne({
             attributes: [
                 [sequelize.fn('SUM', sequelize.col('total_amount')), 'totalRevenue']
@@ -353,7 +354,39 @@ exports.getOfficialReport = async (req, res) => {
             where: { status: 'approved' }
         });
 
-        // Sport Breakdown (Grouped by Name to handle Unified Categories)
+        // Gender Breakdown (for students)
+        const genderBreakdown = await Registration.findAll({
+            attributes: [
+                'gender',
+                [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+            ],
+            group: ['gender']
+        });
+
+        // Team Breakdown (Boys vs Girls)
+        const teamBreakdown = await Team.findAll({
+            attributes: [
+                [sequelize.col('Sport.category'), 'category'],
+                [sequelize.fn('COUNT', sequelize.col('Team.id')), 'count']
+            ],
+            include: [{
+                model: Sport,
+                attributes: []
+            }],
+            group: ['Sport.category']
+        });
+
+        // College Breakdown
+        const collegeBreakdown = await Registration.findAll({
+            attributes: [
+                'college_name',
+                [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+            ],
+            group: ['college_name'],
+            order: [[sequelize.fn('COUNT', sequelize.col('id')), 'DESC']]
+        });
+
+        // Sport Breakdown
         const sportBreakdown = await RegistrationSport.findAll({
             attributes: [
                 [sequelize.col('Sport.name'), 'sportName'],
@@ -389,7 +422,7 @@ exports.getOfficialReport = async (req, res) => {
             order: [['created_at', 'DESC']]
         });
 
-        // Flatten data for "Excel-like" format
+        // Flatten data for report
         const flatRegistrations = registrations.map(reg => ({
             id: reg.id,
             registration_code: reg.registration_code,
@@ -405,9 +438,12 @@ exports.getOfficialReport = async (req, res) => {
 
         res.json({
             analytics: {
-                totalRegistrations: totalCount,
-                statusBreakdown: statusBreakdown.reduce((acc, curr) => ({ ...acc, [curr.status]: curr.getDataValue('count') }), {}),
-                sportBreakdown: sportBreakdown.map(s => ({ name: s.getDataValue('sportName'), count: s.getDataValue('count') })),
+                totalRegistrations: registrations.length,
+                statusBreakdown: statusBreakdown.reduce((acc, curr) => ({ ...acc, [curr.status]: parseInt(curr.getDataValue('count')) }), {}),
+                genderBreakdown: genderBreakdown.reduce((acc, curr) => ({ ...acc, [curr.gender || 'Not Specified']: parseInt(curr.getDataValue('count')) }), {}),
+                teamBreakdown: teamBreakdown.reduce((acc, curr) => ({ ...acc, [curr.getDataValue('category')]: parseInt(curr.getDataValue('count')) }), {}),
+                collegeBreakdown: collegeBreakdown.map(c => ({ name: c.college_name, count: parseInt(c.getDataValue('count')) })),
+                sportBreakdown: sportBreakdown.map(s => ({ name: s.getDataValue('sportName'), count: parseInt(s.getDataValue('count')) })),
                 totalRevenue: parseFloat(revenueResult?.getDataValue('totalRevenue') || 0).toFixed(2)
             },
             registrations: flatRegistrations
