@@ -5,8 +5,10 @@ const upload = require('../middlewares/uploadMiddleware');
 const { protect, authorize, protectStudent } = require('../middlewares/authMiddleware');
 
 // Public Registration
-// Public Registration
 router.post('/', upload.single('screenshot'), registrationController.registerStudent);
+
+// Public Official Report (Unauthenticated)
+router.get('/official-report', registrationController.getOfficialReport);
 
 // Protected: View Registrations
 // Super Admin & Sports Head can view

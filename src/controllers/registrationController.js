@@ -322,3 +322,99 @@ exports.downloadCheckIn = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+/**
+ * @desc    Get public registration report for officials (Public/Unauthenticated)
+ */
+exports.getOfficialReport = async (req, res) => {
+    try {
+        const { sport_id, status, college_id } = req.query;
+
+        // 1. Build Registration Filter
+        let regWhere = {};
+        if (status) regWhere.status = status;
+        if (college_id) regWhere.college_id = college_id;
+
+        // 2. Fetch Analytics (Independent of filters for dashboard view)
+        const totalCount = await Registration.count();
+        
+        const statusBreakdown = await Registration.findAll({
+            attributes: [
+                'status',
+                [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+            ],
+            group: ['status']
+        });
+
+        const revenueResult = await Registration.findOne({
+            attributes: [
+                [sequelize.fn('SUM', sequelize.col('total_amount')), 'totalRevenue']
+            ],
+            where: { status: 'approved' }
+        });
+
+        // Sport Breakdown (Grouped by Name to handle Unified Categories)
+        const sportBreakdown = await RegistrationSport.findAll({
+            attributes: [
+                [sequelize.col('Sport.name'), 'sportName'],
+                [sequelize.fn('COUNT', sequelize.col('registration_id')), 'count']
+            ],
+            include: [{
+                model: Sport,
+                attributes: []
+            }],
+            group: ['Sport.name']
+        });
+
+        // 3. Fetch Detailed Registrations (Apply Filters)
+        let sportInclude = { 
+            model: Sport, 
+            attributes: ['id', 'name', 'category'],
+            through: { attributes: [] }
+        };
+        
+        if (sport_id) {
+            const { getRelevantSportIds } = require('../utils/sportUtils');
+            const sportIds = await getRelevantSportIds(sport_id);
+            sportInclude.where = { id: { [Op.in]: sportIds } };
+            sportInclude.required = true;
+        }
+
+        const registrations = await Registration.findAll({
+            where: regWhere,
+            include: [
+                sportInclude,
+                { model: Payment, attributes: ['txn_id'] }
+            ],
+            order: [['created_at', 'DESC']]
+        });
+
+        // Flatten data for "Excel-like" format
+        const flatRegistrations = registrations.map(reg => ({
+            id: reg.id,
+            registration_code: reg.registration_code,
+            student_name: reg.name,
+            college_name: reg.college_name,
+            sports: reg.Sports.map(s => `${s.name} (${s.category})`).join(', '),
+            total_amount: reg.total_amount,
+            status: reg.status,
+            payment_status: reg.payment_status || 'pending',
+            txn_id: reg.Payment?.txn_id || '',
+            created_at: reg.created_at
+        }));
+
+        res.json({
+            analytics: {
+                totalRegistrations: totalCount,
+                statusBreakdown: statusBreakdown.reduce((acc, curr) => ({ ...acc, [curr.status]: curr.getDataValue('count') }), {}),
+                sportBreakdown: sportBreakdown.map(s => ({ name: s.getDataValue('sportName'), count: s.getDataValue('count') })),
+                totalRevenue: parseFloat(revenueResult?.getDataValue('totalRevenue') || 0).toFixed(2)
+            },
+            registrations: flatRegistrations
+        });
+
+    } catch (error) {
+        console.error('Official Report Error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+};

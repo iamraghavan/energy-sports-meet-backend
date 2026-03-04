@@ -183,3 +183,17 @@
 2026-02-28 21:33:02:332 info: ✔️ short_name already exists.
 2026-02-28 21:33:02:332 info: 🏁 All migrations checked/applied.
 2026-02-28 21:33:08:338 info: ✅ Database synchronized successfully.
+2026-03-04 16:30:10:3010 info: 🚀 Server (HTTP) is running on port 8080 (Bound to 0.0.0.0)
+2026-03-04 16:30:10:3010 info: ✅ Database connection has been established successfully.
+2026-03-04 16:30:10:3010 info: 🚀 Starting Safe Migrations...
+2026-03-04 16:30:11:3011 info: ✔️ match_state already exists.
+2026-03-04 16:30:11:3011 info: ✔️ short_name already exists.
+2026-03-04 16:30:11:3011 info: 🏁 All migrations checked/applied.
+2026-03-04 16:30:11:3011 info: ✅ Database synchronized successfully.
+2026-03-04 16:43:43:4343 info: 🚀 Server (HTTP) is running on port 8080 (Bound to 0.0.0.0)
+2026-03-04 16:43:43:4343 info: ✅ Database connection has been established successfully.
+2026-03-04 16:43:43:4343 info: 🚀 Starting Safe Migrations...
+2026-03-04 16:43:43:4343 info: ✔️ match_state already exists.
+2026-03-04 16:43:43:4343 info: ✔️ short_name already exists.
+2026-03-04 16:43:43:4343 info: 🏁 All migrations checked/applied.
+2026-03-04 16:43:44:4344 info: ✅ Database synchronized successfully.
