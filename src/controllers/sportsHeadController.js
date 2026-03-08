@@ -250,6 +250,8 @@ exports.getSportTeams = async (req, res) => {
     }
 };
 
+// 01
+
 exports.getTeamDetails = async (req, res) => {
     try {
         const { id } = req.params;
