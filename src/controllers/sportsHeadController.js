@@ -255,46 +255,8 @@ exports.getTeamDetails = async (req, res) => {
         const { id } = req.params;
         const sportIds = await getRelevantSportIds(req.user.assigned_sport_id);
 
-        // Case A: Registration-based Pseudo-team (ID starts with REG-)
-        if (id.startsWith('REG-')) {
-            const regId = id.replace('REG-', '');
-            const reg = await Registration.findByPk(regId, {
-                include: [
-                    {
-                        model: Sport,
-                        where: { id: { [Op.in]: sportIds } },
-                        attributes: ['id', 'name', 'category']
-                    }
-                ]
-            });
-
-            if (!reg) return res.status(404).json({ error: 'Registration not found or not registered for your sport' });
-
-            // Format as a pseudo-team
-            const pseudoTeam = {
-                id: `REG-${reg.id}`,
-                team_name: reg.college_name || reg.name || 'Independent Player',
-                college_info: { name: reg.college_name, city: reg.college_city },
-                sport_id: req.user.assigned_sport_id,
-                captain_id: reg.id,
-                locked: false,
-                Sport: reg.Sports?.[0], 
-                Captain: { name: reg.name, mobile: reg.mobile }, 
-                is_registration_based: true,
-                registration_id: reg.id,
-                members: [{
-                    id: `MEM-${reg.id}`,
-                    student_id: reg.id,
-                    Student: { name: reg.name, mobile: reg.mobile },
-                    role: 'Captain'
-                }]
-            };
-
-            return res.json(pseudoTeam);
-        }
-
-        // Case B: Explicit Team record
-        const team = await Team.findOne({ 
+        // 1. Try to find an explicit Team record first
+        let team = await Team.findOne({ 
             where: { id, sport_id: { [Op.in]: sportIds } },
             include: [
                 { model: Sport, attributes: ['id', 'name'] },
@@ -305,6 +267,48 @@ exports.getTeamDetails = async (req, res) => {
                 }
             ]
         });
+
+        // 2. If not found, check if it's a Registration-based Pseudo-team (with or without REG- prefix)
+        if (!team) {
+            const regId = id.startsWith('REG-') ? id.replace('REG-', '') : id;
+            
+            // Check if regId is a valid UUID before querying to avoid DB errors
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (uuidRegex.test(regId)) {
+                const reg = await Registration.findByPk(regId, {
+                    include: [
+                        {
+                            model: Sport,
+                            where: { id: { [Op.in]: sportIds } },
+                            attributes: ['id', 'name', 'category']
+                        }
+                    ]
+                });
+
+                if (reg) {
+                    // Format as a pseudo-team
+                    const pseudoTeam = {
+                        id: `REG-${reg.id}`,
+                        team_name: reg.college_name || reg.name || 'Independent Player',
+                        college_info: { name: reg.college_name, city: reg.college_city },
+                        sport_id: req.user.assigned_sport_id,
+                        captain_id: reg.id,
+                        locked: false,
+                        Sport: reg.Sports?.[0], 
+                        Captain: { name: reg.name, mobile: reg.mobile }, 
+                        is_registration_based: true,
+                        registration_id: reg.id,
+                        members: [{
+                            id: `MEM-${reg.id}`,
+                            student_id: reg.id,
+                            Student: { name: reg.name, mobile: reg.mobile },
+                            role: 'Captain'
+                        }]
+                    };
+                    return res.json(pseudoTeam);
+                }
+            }
+        }
 
         if (!team) return res.status(404).json({ error: 'Team not found or does not belong to your sport' });
 
