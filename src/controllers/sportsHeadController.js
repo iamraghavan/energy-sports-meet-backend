@@ -250,13 +250,50 @@ exports.getSportTeams = async (req, res) => {
     }
 };
 
-// 01
-
 exports.getTeamDetails = async (req, res) => {
     try {
         const { id } = req.params;
         const sportIds = await getRelevantSportIds(req.user.assigned_sport_id);
 
+        // Case A: Registration-based Pseudo-team (ID starts with REG-)
+        if (id.startsWith('REG-')) {
+            const regId = id.replace('REG-', '');
+            const reg = await Registration.findByPk(regId, {
+                include: [
+                    {
+                        model: Sport,
+                        where: { id: { [Op.in]: sportIds } },
+                        attributes: ['id', 'name', 'category']
+                    }
+                ]
+            });
+
+            if (!reg) return res.status(404).json({ error: 'Registration not found or not registered for your sport' });
+
+            // Format as a pseudo-team
+            const pseudoTeam = {
+                id: `REG-${reg.id}`,
+                team_name: reg.college_name || reg.name || 'Independent Player',
+                college_info: { name: reg.college_name, city: reg.college_city },
+                sport_id: req.user.assigned_sport_id,
+                captain_id: reg.id,
+                locked: false,
+                Sport: reg.Sports?.[0], 
+                Captain: { name: reg.name, mobile: reg.mobile }, 
+                is_registration_based: true,
+                registration_id: reg.id,
+                members: [{
+                    id: `MEM-${reg.id}`,
+                    student_id: reg.id,
+                    Student: { name: reg.name, mobile: reg.mobile },
+                    role: 'Captain'
+                }]
+            };
+
+            return res.json(pseudoTeam);
+        }
+
+        // Case B: Explicit Team record
         const team = await Team.findOne({ 
             where: { id, sport_id: { [Op.in]: sportIds } },
             include: [
@@ -271,14 +308,6 @@ exports.getTeamDetails = async (req, res) => {
 
         if (!team) return res.status(404).json({ error: 'Team not found or does not belong to your sport' });
 
-        // Get members
-        // Members are stored in TeamMembers table which LINKS to Student.
-        // If Students are created only when added to teams (via Dashboard), then this works.
-        // But if we want to show ALL registered students for this team...
-        // Wait, if users registered individually, they are in Registration.
-        // If they formed a team via Dashboard, they are in Team/TeamMembers.
-        
-        // This endpoint returns the explicit Team structure.
         const { TeamMember } = require('../models');
         const members = await TeamMember.findAll({
             where: { team_id: id },
