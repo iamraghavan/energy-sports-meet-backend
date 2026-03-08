@@ -3,7 +3,61 @@ const { getRelevantSportIds } = require('../utils/sportUtils');
 const { resolveOrCreateTeam, ensureFullRoster } = require('../utils/teamUtils');
 const { Op } = require('sequelize');
 
-// ... (getAllTeams and getTeamById remain same)
+// Get All Teams
+exports.getAllTeams = async (req, res) => {
+    try {
+        const teams = await Team.findAll({
+            include: [
+                { model: Sport, attributes: ['id', 'name', 'category', 'type'] },
+                {
+                    model: Student,
+                    as: 'Captain',
+                    attributes: ['name', 'email'],
+                    include: [{ model: College, attributes: ['name', 'city'] }]
+                }
+            ]
+        });
+        res.json(teams);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// Get Team By ID (with Members)
+exports.getTeamById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const team = await Team.findByPk(id, {
+            include: [
+                { model: Sport, attributes: ['id', 'name', 'category'] },
+                {
+                    model: Student,
+                    as: 'Captain',
+                    attributes: ['name', 'mobile'],
+                    include: [{ model: College, attributes: ['name', 'city'] }]
+                }
+            ]
+        });
+
+        if (!team) return res.status(404).json({ error: 'Team not found' });
+
+        // Fetch members separately via TeamMember
+        const members = await TeamMember.findAll({
+            where: { team_id: id },
+            include: [
+                {
+                    model: Student,
+                    attributes: ['id', 'name', 'department', 'year_of_study'],
+                    include: [{ model: College, attributes: ['name', 'city'] }]
+                }
+            ]
+        });
+
+        res.json({ ...team.toJSON(), members });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
 // Get Teams by Sport
 exports.getTeamsBySport = async (req, res) => {
