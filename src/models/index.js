@@ -61,10 +61,6 @@ RegistrationSport.belongsTo(Sport, { foreignKey: 'sport_id' });
 Registration.hasOne(Payment, { foreignKey: 'registration_id' });
 Payment.belongsTo(Registration, { foreignKey: 'registration_id' });
 
-// Registration - Student (Fix: Link registrations to student profiles)
-Registration.belongsTo(Student, { foreignKey: 'student_id' });
-Student.hasMany(Registration, { foreignKey: 'student_id' });
-
 // Match Associations
 Sport.hasMany(Match, { foreignKey: 'sport_id' });
 Match.belongsTo(Sport, { foreignKey: 'sport_id' });
