@@ -2,6 +2,64 @@ const { Match, Team, Sport, Registration, Student, College, sequelize, TeamMembe
 const { Op } = require('sequelize');
 const { getRelevantSportIds } = require('../utils/sportUtils');
 
+/**
+ * Helper to resolve a team by ID or create one from a Registration if it doesn't exist.
+ * Used for both individual and bulk player additions to support registration-based "teams".
+ */
+async function resolveOrCreateTeam(teamId, sport_id, transaction) {
+    // 1. Try to find an explicit Team record first
+    let team = await Team.findOne({ where: { id: teamId, sport_id }, transaction });
+    if (team) return team;
+
+    // 2. If not found, check if it's a Registration-based Pseudo-team (with or without REG- prefix)
+    const cleanId = teamId.startsWith('REG-') ? teamId.replace('REG-', '') : teamId;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    
+    if (uuidRegex.test(cleanId)) {
+        const registration = await Registration.findByPk(cleanId, { transaction });
+        if (registration) {
+            // AUTO-CREATE TEAM from Registration
+            let studentOwner = await Student.findOne({ 
+                where: { [Op.or]: [{ mobile: registration.mobile }, { email: registration.email }] },
+                transaction
+            });
+
+            if (!studentOwner) {
+                studentOwner = await Student.create({
+                    name: registration.name,
+                    email: registration.email,
+                    mobile: registration.mobile,
+                    whatsapp: registration.whatsapp,
+                    college_id: registration.college_id,
+                    other_college: registration.other_college,
+                    department: registration.department,
+                    year_of_study: registration.year_of_study
+                }, { transaction });
+            }
+
+            team = await Team.create({
+                team_name: registration.college_name || registration.name || 'Tournament Team',
+                captain_id: studentOwner.id,
+                sport_id: sport_id,
+                registration_id: registration.id,
+                college_id: registration.college_id || 0,
+                locked: false
+            }, { transaction });
+
+            // Add Owner as Captain in TeamMember
+            await TeamMember.create({
+                team_id: team.id,
+                student_id: studentOwner.id,
+                role: 'Captain'
+            }, { transaction });
+
+            return team;
+        }
+    }
+
+    return null;
+}
+
 // ==========================================
 // OVERVIEW STATS
 // ==========================================
@@ -485,10 +543,16 @@ exports.addPlayerToTeam = async (req, res) => {
     const t = await sequelize.transaction();
     try {
         const { teamId, studentId } = req.params; // studentId here is actually Registration ID passed from frontend
-        // Note: The frontend lists "Registrations". When dragging/adding, it passes Registration ID.
-        // But TeamMember table requires a valid existing 'Student' record.
-        
-        // 1. Fetch Registration
+        const sport_id = req.user.assigned_sport_id;
+
+        // 1. Resolve/Ensure Team
+        const team = await resolveOrCreateTeam(teamId, sport_id, t);
+        if (!team) {
+            await t.rollback();
+            return res.status(404).json({ error: 'Team not found or registration not found for your sport' });
+        }
+
+        // 2. Fetch Player Registration
         const registration = await Registration.findByPk(studentId, { transaction: t });
         if (!registration) {
             await t.rollback();
@@ -519,9 +583,9 @@ exports.addPlayerToTeam = async (req, res) => {
             }, { transaction: t });
         }
 
-        // 3. Check if already in this team
+        // 4. Check if already in this team
         const existingMember = await TeamMember.findOne({
-            where: { team_id: teamId, student_id: student.id },
+            where: { team_id: team.id, student_id: student.id },
             transaction: t
         });
 
@@ -530,9 +594,9 @@ exports.addPlayerToTeam = async (req, res) => {
             return res.status(400).json({ error: 'Player already in this team' });
         }
 
-        // 4. Create Team Member Link
+        // 5. Create Team Member Link
         const teamMember = await TeamMember.create({
-            team_id: teamId,
+            team_id: team.id,
             student_id: student.id,
             role: 'Player',
             sport_role: req.body.sport_role || null // Optional role details
@@ -552,10 +616,14 @@ exports.addPlayerToTeam = async (req, res) => {
 exports.removePlayerFromTeam = async (req, res) => {
      try {
         const { teamId, studentId } = req.params;
-        const { TeamMember } = require('../models');
+        const sport_id = req.user.assigned_sport_id;
+
+        // Resolve Actual Team ID from path (handles REG- prefix)
+        const team = await resolveOrCreateTeam(teamId, sport_id);
+        if (!team) return res.status(404).json({ error: 'Team not found' });
 
         await TeamMember.destroy({
-            where: { team_id: teamId, student_id: studentId }
+            where: { team_id: team.id, student_id: studentId }
         });
 
         res.json({ message: 'Player removed from team' });
@@ -639,12 +707,16 @@ exports.bulkAddPlayers = async (req, res) => {
         const errors = [];
         const sport_id = req.user.assigned_sport_id;
 
-        // Verify Team
-        const team = await Team.findOne({ where: { id: teamId, sport_id }, transaction: t });
+        // 1. Resolve/Verify Team
+        const team = await resolveOrCreateTeam(teamId, sport_id, t);
+        
         if (!team) {
             await t.rollback();
-            return res.status(404).json({ error: 'Team not found or mismatch sport' });
+            return res.status(404).json({ error: 'Team not found or registration not found for your sport' });
         }
+
+        // Use the actual team.id (as teamId might have been a Registration ID)
+        const actualTeamId = team.id;
 
         for (const item of items) {
             try {
@@ -692,7 +764,7 @@ exports.bulkAddPlayers = async (req, res) => {
 
                 // 3. Check membership and Update/Create
                 const existing = await TeamMember.findOne({
-                    where: { team_id: teamId, student_id: student.id },
+                    where: { team_id: actualTeamId, student_id: student.id },
                     transaction: t
                 });
 
@@ -708,7 +780,7 @@ exports.bulkAddPlayers = async (req, res) => {
 
                 if (!existing) {
                     await TeamMember.create({
-                        team_id: teamId,
+                        team_id: actualTeamId,
                         student_id: student.id,
                         ...memberData
                     }, { transaction: t });
@@ -741,20 +813,14 @@ exports.updatePlayerDetails = async (req, res) => {
     try {
         const { teamId, studentId } = req.params;
         const updates = req.body; // { role, sport_role }
+        const sport_id = req.user.assigned_sport_id;
 
-        // Note: studentId in param usually matches Registration ID in frontend lists, 
-        // BUT TeamMember links to Student ID.
-        // If frontend passes Registration ID, we must resolve Student ID first.
-        // Ideally frontend passes Student ID if known, or we lookup.
-        // As per bulkAdd, we linked Registration -> Student.
+        // Resolve Actual Team ID
+        const team = await resolveOrCreateTeam(teamId, sport_id);
+        if (!team) return res.status(404).json({ error: 'Team not found' });
         
-        // Let's assume studentId param IS the student.id (UUID) if accessing team members.
-        // OR if accessing from registration list, it is reg.id.
-        // Update logic: find TeamMember by team_id and student_id.
-        
-        // If the ID passed is a Registration ID, we need to find the student.
-        // Try finding by PK as Student first?
-        let member = await TeamMember.findOne({ where: { team_id: teamId, student_id: studentId } });
+        // Find member (always uses formal Student UUID)
+        let member = await TeamMember.findOne({ where: { team_id: team.id, student_id: studentId } });
         
         if (!member) {
              // Fallback: maybe studentId is a Registration ID?
@@ -762,7 +828,7 @@ exports.updatePlayerDetails = async (req, res) => {
              if (reg) {
                  const student = await Student.findOne({ where: { email: reg.email } });
                  if (student) {
-                     member = await TeamMember.findOne({ where: { team_id: teamId, student_id: student.id } });
+                     member = await TeamMember.findOne({ where: { team_id: team.id, student_id: student.id } });
                  }
              }
         }

@@ -28,7 +28,8 @@
     // Student/Player Routes
     router.get('/students', sportsHeadController.getAllStudents);
     router.post('/import-players', sportsHeadController.importTeamMembers); // New Excel Import Route
-    router.post('/teams/:teamId/players/bulk', sportsHeadController.bulkAddPlayers); // Legacy Bulk Route
+    router.post('/teams/:teamId/players/bulk', sportsHeadController.bulkAddPlayers); // Original Route
+    router.post('/teams/:teamId/members/bulk', sportsHeadController.bulkAddPlayers); // Alias to match frontend
     router.post('/teams/:teamId/players/:studentId', sportsHeadController.addPlayerToTeam);
     router.put('/teams/:teamId/players/:studentId', sportsHeadController.updatePlayerDetails); // New Update Route
     router.delete('/teams/:teamId/players/:studentId', sportsHeadController.removePlayerFromTeam);
