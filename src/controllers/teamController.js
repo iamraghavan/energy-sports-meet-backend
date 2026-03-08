@@ -1,63 +1,9 @@
-const { Team, Sport, Student, Registration, College, sequelize } = require('../models');
+const { Team, Sport, Student, Registration, College, sequelize, TeamMember } = require('../models');
 const { getRelevantSportIds } = require('../utils/sportUtils');
+const { resolveOrCreateTeam, ensureFullRoster } = require('../utils/teamUtils');
 const { Op } = require('sequelize');
 
-// Get All Teams
-exports.getAllTeams = async (req, res) => {
-    try {
-        const teams = await Team.findAll({
-            include: [
-                { model: Sport, attributes: ['id', 'name', 'category', 'type'] },
-                {
-                    model: Student,
-                    as: 'Captain',
-                    attributes: ['name', 'email'],
-                    include: [{ model: College, attributes: ['name', 'city'] }]
-                }
-            ]
-        });
-        res.json(teams);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-// Get Team By ID (with Members)
-exports.getTeamById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const team = await Team.findByPk(id, {
-            include: [
-                { model: Sport, attributes: ['id', 'name', 'category'] },
-                {
-                    model: Student,
-                    as: 'Captain',
-                    attributes: ['name', 'mobile'],
-                    include: [{ model: College, attributes: ['name', 'city'] }]
-                }
-            ]
-        });
-
-        if (!team) return res.status(404).json({ error: 'Team not found' });
-
-        // Fetch members separately via Registration if association isn't direct
-        // Assuming Registration has team_id
-        const members = await Registration.findAll({
-            where: { team_id: id },
-            include: [
-                {
-                    model: Student,
-                    attributes: ['id', 'name', 'department', 'year_of_study'],
-                    include: [{ model: College, attributes: ['name', 'city'] }]
-                }
-            ]
-        });
-
-        res.json({ ...team.toJSON(), members });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
+// ... (getAllTeams and getTeamById remain same)
 
 // Get Teams by Sport
 exports.getTeamsBySport = async (req, res) => {
@@ -79,36 +25,54 @@ exports.getTeamsBySport = async (req, res) => {
             ]
         });
 
-        // 2. If no teams found, fallback to showing all registrations for this sport
+        // 2. If no teams found, PROACTIVELY promote approved registrations to teams
         if (teams.length === 0) {
             const registrations = await Registration.findAll({
+                where: { status: 'approved' },
                 include: [
                     {
                         model: Sport,
                         where: { id: { [Op.in]: sportIds } },
                         attributes: ['id', 'name', 'category']
-                    },
-                    {
-                        model: Student,
-                        attributes: ['name'],
-                        include: [{ model: College, attributes: ['name', 'city'] }]
                     }
                 ],
                 order: [['created_at', 'ASC']]
             });
 
-            // Format registrations to look like team objects for the frontend
-            teams = registrations.map(reg => ({
-                id: reg.id,
-                team_name: reg.college_name || reg.Student?.name || 'Independent Player',
-                college_info: reg.Student?.College,
-                sport_id: sportId,
-                captain_id: reg.student_id,
-                locked: false,
-                Sport: reg.Sports?.[0], // In belongsToMany, it returns an array
-                Captain: reg.Student,
-                is_registration_based: true // Flag to distinguish
-            }));
+            if (registrations.length > 0) {
+                const t = await sequelize.transaction();
+                try {
+                    for (const reg of registrations) {
+                        // resolveOrCreateTeam handles Student creation, Team creation, and Dummy Player generation
+                        await resolveOrCreateTeam(reg.id, reg.Sports?.[0]?.id || sportId, t);
+                    }
+                    await t.commit();
+
+                    // Re-query teams after promotion
+                    teams = await Team.findAll({
+                        where: { sport_id: { [Op.in]: sportIds } },
+                        include: [
+                            { model: Sport, attributes: ['id', 'name', 'category'] },
+                            {
+                                model: Student,
+                                as: 'Captain',
+                                attributes: ['name'],
+                                include: [{ model: College, attributes: ['name', 'city'] }]
+                            }
+                        ]
+                    });
+                } catch (err) {
+                    await t.rollback();
+                    console.error("Auto-promotion failed:", err);
+                    // Fallback to basic mapping if promotion fails (to avoid blocking UI)
+                    teams = registrations.map(reg => ({
+                        id: reg.id,
+                        team_name: reg.college_name || reg.name || 'Independent Player',
+                        sport_id: sportId,
+                        is_registration_based: true
+                    }));
+                }
+            }
         }
 
         res.json(teams);

@@ -1,66 +1,7 @@
 const { Match, Team, Sport, Registration, Student, College, sequelize, TeamMember } = require('../models');
 const { Op } = require('sequelize');
 const { getRelevantSportIds } = require('../utils/sportUtils');
-
-/**
- * Helper to resolve a team by ID or create one from a Registration if it doesn't exist.
- * Used for both individual and bulk player additions to support registration-based "teams".
- */
-async function resolveOrCreateTeam(teamId, sport_id, transaction) {
-    // 1. Try to find an explicit Team record first
-    let team = await Team.findOne({ where: { id: teamId, sport_id }, transaction });
-    if (team) return team;
-
-    // 2. If not found, check if it's a Registration-based Pseudo-team (with or without REG- prefix)
-    const cleanId = teamId.startsWith('REG-') ? teamId.replace('REG-', '') : teamId;
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    
-    if (uuidRegex.test(cleanId)) {
-        const registration = await Registration.findByPk(cleanId, { transaction });
-        if (registration) {
-            // AUTO-CREATE TEAM from Registration
-            let studentOwner = await Student.findOne({ 
-                where: { [Op.or]: [{ mobile: registration.mobile }, { email: registration.email }] },
-                transaction
-            });
-
-            if (!studentOwner) {
-                studentOwner = await Student.create({
-                    name: registration.name,
-                    email: registration.email,
-                    mobile: registration.mobile,
-                    whatsapp: registration.whatsapp,
-                    city: registration.city || registration.college_city,
-                    state: registration.state || registration.college_state,
-                    college_id: registration.college_id,
-                    other_college: registration.other_college,
-                    department: registration.department,
-                    year_of_study: registration.year_of_study
-                }, { transaction });
-            }
-
-            team = await Team.create({
-                team_name: registration.college_name || registration.name || 'Tournament Team',
-                captain_id: studentOwner.id,
-                sport_id: sport_id,
-                registration_id: registration.id,
-                college_id: registration.college_id || 0,
-                locked: false
-            }, { transaction });
-
-            // Add Owner as Captain in TeamMember
-            await TeamMember.create({
-                team_id: team.id,
-                student_id: studentOwner.id,
-                role: 'Captain'
-            }, { transaction });
-
-            return team;
-        }
-    }
-
-    return null;
-}
+const { resolveOrCreateTeam } = require('../utils/teamUtils');
 
 // ==========================================
 // OVERVIEW STATS
