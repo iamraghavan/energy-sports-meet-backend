@@ -38,11 +38,11 @@ const Student = sequelize.define('Student', {
     },
     city: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: true
     },
     state: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: true
     },
     college_id: {
         type: DataTypes.INTEGER, // References College table

@@ -30,6 +30,8 @@ async function resolveOrCreateTeam(teamId, sport_id, transaction) {
                     email: registration.email,
                     mobile: registration.mobile,
                     whatsapp: registration.whatsapp,
+                    city: registration.city || registration.college_city,
+                    state: registration.state || registration.college_state,
                     college_id: registration.college_id,
                     other_college: registration.other_college,
                     department: registration.department,
